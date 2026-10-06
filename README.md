@@ -44,8 +44,11 @@ the desktop text size — `omarchy display text size`, or GNOME's
 Omawrite at the size it is designed around; larger and smaller sizes scale from there.
 
 The speaker button in the footer, or `Ctrl+Shift+T`, turns on typewriter sounds:
-key strikes, a heavier space bar, and a carriage return that ends on the margin
-bell. They are off by default. The sounds are synthesized by `sounds/generate.py`.
+an IBM Selectric II for typing, and a margin bell and carriage return for `Enter`.
+They are off by default. The sounds are cut from two CC0 recordings on Freesound,
+[secretmojo's Selectric II](https://freesound.org/people/secretmojo/sounds/224012/)
+and [knufds' bell and carriage reset](https://freesound.org/people/knufds/sounds/345955/),
+by `sounds/extract.py`.
 
 ## Requirements
 

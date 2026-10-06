@@ -35,10 +35,11 @@ Item {
         id: player
         active: sounds.active
         sourceComponent: Item {
-            // Several copies of each effect, because replaying a SoundEffect
-            // that is still sounding cuts it off.
-            readonly property var keys: [key1a, key2a, key3a, key4a, key1b, key2b, key3b, key4b]
-            readonly property var spaces: [spaceA, spaceB]
+            // Several effects per kind, because replaying a SoundEffect that
+            // is still sounding cuts it off. Each key is a different stroke
+            // from the same Selectric, so fast typing never sounds looped.
+            readonly property var keys: [key1, key2, key3, key4, key5, key6, key7, key8]
+            readonly property var spaces: [space1, space2]
             readonly property var backspaces: [backspaceA, backspaceB]
             readonly property var returns: [returnA]
             property var nextIndex: ({})
@@ -46,8 +47,6 @@ Item {
             function play(effects) {
                 var name = effects[0].objectName;
                 var index = nextIndex[name] || 0;
-                // Strike a different key sample each time so fast typing
-                // does not sound like a loop.
                 if (effects === keys)
                     index = (index + 1 + Math.floor(Math.random() * 3)) % effects.length;
                 else
@@ -56,19 +55,19 @@ Item {
                 effects[index].play();
             }
 
-            Effect { id: key1a; objectName: "key"; source: "qrc:/sounds/key1.wav" }
-            Effect { id: key2a; source: "qrc:/sounds/key2.wav" }
-            Effect { id: key3a; source: "qrc:/sounds/key3.wav" }
-            Effect { id: key4a; source: "qrc:/sounds/key4.wav" }
-            Effect { id: key1b; source: "qrc:/sounds/key1.wav" }
-            Effect { id: key2b; source: "qrc:/sounds/key2.wav" }
-            Effect { id: key3b; source: "qrc:/sounds/key3.wav" }
-            Effect { id: key4b; source: "qrc:/sounds/key4.wav" }
-            Effect { id: spaceA; objectName: "space"; source: "qrc:/sounds/space.wav" }
-            Effect { id: spaceB; source: "qrc:/sounds/space.wav" }
+            Effect { id: key1; objectName: "key"; source: "qrc:/sounds/key1.wav" }
+            Effect { id: key2; source: "qrc:/sounds/key2.wav" }
+            Effect { id: key3; source: "qrc:/sounds/key3.wav" }
+            Effect { id: key4; source: "qrc:/sounds/key4.wav" }
+            Effect { id: key5; source: "qrc:/sounds/key5.wav" }
+            Effect { id: key6; source: "qrc:/sounds/key6.wav" }
+            Effect { id: key7; source: "qrc:/sounds/key7.wav" }
+            Effect { id: key8; source: "qrc:/sounds/key8.wav" }
+            Effect { id: space1; objectName: "space"; source: "qrc:/sounds/space1.wav" }
+            Effect { id: space2; source: "qrc:/sounds/space2.wav" }
             Effect { id: backspaceA; objectName: "backspace"; source: "qrc:/sounds/backspace.wav" }
             Effect { id: backspaceB; source: "qrc:/sounds/backspace.wav" }
-            Effect { id: returnA; objectName: "return"; source: "qrc:/sounds/return.wav"; volume: sounds.volume * 0.8 }
+            Effect { id: returnA; objectName: "return"; source: "qrc:/sounds/return.wav" }
         }
     }
 }

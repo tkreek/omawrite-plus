@@ -17,7 +17,12 @@
         <file alias="sounds/key2.wav">../sounds/key2.wav</file>
         <file alias="sounds/key3.wav">../sounds/key3.wav</file>
         <file alias="sounds/key4.wav">../sounds/key4.wav</file>
-        <file alias="sounds/space.wav">../sounds/space.wav</file>
+        <file alias="sounds/key5.wav">../sounds/key5.wav</file>
+        <file alias="sounds/key6.wav">../sounds/key6.wav</file>
+        <file alias="sounds/key7.wav">../sounds/key7.wav</file>
+        <file alias="sounds/key8.wav">../sounds/key8.wav</file>
+        <file alias="sounds/space1.wav">../sounds/space1.wav</file>
+        <file alias="sounds/space2.wav">../sounds/space2.wav</file>
         <file alias="sounds/backspace.wav">../sounds/backspace.wav</file>
         <file alias="sounds/return.wav">../sounds/return.wav</file>
     </qresource>
