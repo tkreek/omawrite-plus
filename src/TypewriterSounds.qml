@@ -8,7 +8,7 @@ Item {
     id: sounds
 
     property bool active: false
-    property real volume: 0.5
+    property real volume: 0.35
 
     component Effect: SoundEffect {
         volume: sounds.volume
