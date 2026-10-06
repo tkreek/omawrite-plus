@@ -60,6 +60,25 @@ Item {
                 context.lineTo(13, 13.5);
                 context.moveTo(5, 9.5);
                 context.lineTo(11, 9.5);
+            } else if (control.iconName === "sound" || control.iconName === "muted") {
+                context.moveTo(2.5, 6);
+                context.lineTo(5, 6);
+                context.lineTo(8.5, 3);
+                context.lineTo(8.5, 13);
+                context.lineTo(5, 10);
+                context.lineTo(2.5, 10);
+                context.closePath();
+                if (control.iconName === "sound") {
+                    context.moveTo(10.5, 6);
+                    context.quadraticCurveTo(12, 8, 10.5, 10);
+                    context.moveTo(12.5, 4);
+                    context.quadraticCurveTo(15, 8, 12.5, 12);
+                } else {
+                    context.moveTo(10.5, 6);
+                    context.lineTo(14, 10);
+                    context.moveTo(14, 6);
+                    context.lineTo(10.5, 10);
+                }
             } else if (control.iconName === "visible" || control.iconName === "hidden") {
                 context.moveTo(1.5, 8);
                 context.quadraticCurveTo(8, 1, 14.5, 8);

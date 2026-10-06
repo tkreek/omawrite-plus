@@ -33,6 +33,7 @@ class Backend : public QObject {
     Q_PROPERTY(QStringList availableFonts READ availableFonts CONSTANT)
     Q_PROPERTY(int editorFontSize READ editorFontSize WRITE setEditorFontSize NOTIFY editorFontSizeChanged)
     Q_PROPERTY(bool hideFrontMatter READ hideFrontMatter WRITE setHideFrontMatter NOTIFY hideFrontMatterChanged)
+    Q_PROPERTY(bool typewriterSounds READ typewriterSounds WRITE setTypewriterSounds NOTIFY typewriterSoundsChanged)
     Q_PROPERTY(bool hasFrontMatter READ hasFrontMatter NOTIFY hasFrontMatterChanged)
 
 public:
@@ -66,6 +67,8 @@ public:
     bool hideFrontMatter() const { return m_hideFrontMatter; }
     void setHideFrontMatter(bool hide);
     bool hasFrontMatter() const;
+    bool typewriterSounds() const { return m_typewriterSounds; }
+    void setTypewriterSounds(bool enabled);
     static QString defaultEditorFont();
     static QStringList selectableFontFamilies(const QStringList &families);
     static int countWords(const QString &text);
@@ -107,6 +110,7 @@ signals:
     void editorFontSizeChanged();
     void hideFrontMatterChanged();
     void hasFrontMatterChanged();
+    void typewriterSoundsChanged();
     void closeAfterSave();
     void openDialogRequested();
     void saveDialogRequested(const QUrl &suggestedUrl);
@@ -166,5 +170,6 @@ private:
     QString m_editorFont;
     int m_editorFontSize = 0;
     bool m_hideFrontMatter = false;
+    bool m_typewriterSounds = false;
     QFileSystemWatcher m_themeWatcher;
 };

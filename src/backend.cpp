@@ -38,6 +38,7 @@ constexpr qreal typoraLineHeightPercent = 140;
 const QString lastSaveDirectorySetting = QStringLiteral("file/lastSaveDirectory");
 const QString editorFontSetting = QStringLiteral("editor/font");
 const QString editorFontSizeSetting = QStringLiteral("editor/fontSize");
+const QString typewriterSoundsSetting = QStringLiteral("editor/typewriterSounds");
 const QString hideFrontMatterSetting = QStringLiteral("editor/hideFrontMatter");
 
 // Noto ships a separate family per script, which buries every other font in
@@ -95,6 +96,7 @@ QString Backend::normalizedLinkUrl(const QString &clipboardText) {
 
 Backend::Backend(QObject *parent) : QObject(parent) {
     m_hideFrontMatter = QSettings().value(hideFrontMatterSetting, false).toBool();
+    m_typewriterSounds = QSettings().value(typewriterSoundsSetting, false).toBool();
     const int savedFontSize = QSettings().value(editorFontSizeSetting, 0).toInt();
     if (savedFontSize >= minimumEditorFontSize && savedFontSize <= maximumEditorFontSize)
         m_editorFontSize = savedFontSize;
@@ -474,6 +476,15 @@ void Backend::setHideFrontMatter(bool hide) {
     if (m_highlighter)
         m_highlighter->setFrontMatterHidden(hide);
     emit hideFrontMatterChanged();
+}
+
+void Backend::setTypewriterSounds(bool enabled) {
+    if (m_typewriterSounds == enabled)
+        return;
+
+    m_typewriterSounds = enabled;
+    QSettings().setValue(typewriterSoundsSetting, enabled);
+    emit typewriterSoundsChanged();
 }
 
 bool Backend::hasFrontMatter() const {

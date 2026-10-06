@@ -24,6 +24,7 @@ Install via the Omarchy Package Repository via the `omawrite` package. It's inst
 - `Ctrl+B`, `Ctrl+I`, and `Ctrl+K` insert bold, italic, and link Markdown.
 - `Ctrl+Shift+M` shows or hides the document's front matter.
 - `Ctrl+=` and `Ctrl+-` change the text size; `Ctrl+0` goes back to the desktop text size.
+- `Ctrl+Shift+T` turns typewriter sounds on or off.
 - `Ctrl+?` shows the keyboard shortcut reference.
 
 Unsaved drafts are recovered after an abnormal exit. Omawrite also watches open files
@@ -42,9 +43,13 @@ the desktop text size — `omarchy display text size`, or GNOME's
 `text-scaling-factor` — and re-flows without a restart. The default of 12px leaves
 Omawrite at the size it is designed around; larger and smaller sizes scale from there.
 
+The speaker button in the footer, or `Ctrl+Shift+T`, turns on typewriter sounds:
+key strikes, a heavier space bar, and a carriage return that ends on the margin
+bell. They are off by default. The sounds are synthesized by `sounds/generate.py`.
+
 ## Requirements
 
-- Qt 6: `qt6-base`, `qt6-declarative`, `qt6-quickcontrols2`
+- Qt 6: `qt6-base`, `qt6-declarative`, `qt6-quickcontrols2`, `qt6-multimedia`
 - `xdg-desktop-portal` and a portal backend
 
 The IBM Plex Mono font is bundled under the SIL Open Font License 1.1; see

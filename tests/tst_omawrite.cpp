@@ -184,6 +184,19 @@ private slots:
         QVERIFY(visible(1) && visible(2) && visible(3));
     }
 
+    void remembersTypewriterSounds() {
+        QCOMPARE(Backend().typewriterSounds(), false);
+
+        Backend backend;
+        QSignalSpy spy(&backend, &Backend::typewriterSoundsChanged);
+        backend.setTypewriterSounds(true);
+        QCOMPARE(spy.count(), 1);
+        QCOMPARE(Backend().typewriterSounds(), true);
+
+        backend.setTypewriterSounds(false);
+        QCOMPARE(Backend().typewriterSounds(), false);
+    }
+
     void loadsCurrentOmarchyTheme() {
         QTemporaryDir homeDirectory;
         QVERIFY(homeDirectory.isValid());

@@ -205,6 +205,17 @@ ApplicationWindow {
     }
 
     Shortcut {
+        sequence: "Ctrl+Shift+T"
+        context: Qt.ApplicationShortcut
+        onActivated: backend.typewriterSounds = !backend.typewriterSounds
+    }
+
+    TypewriterSounds {
+        id: typewriterSounds
+        active: backend.typewriterSounds
+    }
+
+    Shortcut {
         sequence: "Ctrl+Shift+M"
         context: Qt.ApplicationShortcut
         onActivated: backend.hideFrontMatter = !backend.hideFrontMatter
@@ -363,7 +374,7 @@ ApplicationWindow {
         standardButtons: Dialog.Close
         anchors.centerIn: parent
         contentItem: Label {
-            text: "Ctrl+S  Save\nCtrl+Shift+S  Save As\nCtrl+O  Open\nCtrl+N  New Window\nCtrl+F  Find\nCtrl+H  Find and Replace\nCtrl+B  Bold\nCtrl+I  Italic\nCtrl+K  Link\nCtrl+Shift+M  Show/Hide Front Matter\nCtrl+= / Ctrl+-  Text Size\nCtrl+0  System Text Size\nCtrl+P  Print\nF11 / Super+F  Fullscreen\nCtrl+?  Shortcuts"
+            text: "Ctrl+S  Save\nCtrl+Shift+S  Save As\nCtrl+O  Open\nCtrl+N  New Window\nCtrl+F  Find\nCtrl+H  Find and Replace\nCtrl+B  Bold\nCtrl+I  Italic\nCtrl+K  Link\nCtrl+Shift+M  Show/Hide Front Matter\nCtrl+= / Ctrl+-  Text Size\nCtrl+0  System Text Size\nCtrl+Shift+T  Typewriter Sounds\nCtrl+P  Print\nF11 / Super+F  Fullscreen\nCtrl+?  Shortcuts"
             lineHeight: 1.5
         }
     }
@@ -730,6 +741,7 @@ ApplicationWindow {
 
                 Keys.priority: Keys.BeforeItem
                 Keys.onPressed: function(event) {
+                    typewriterSounds.keyPressed(event);
                     var pasteKey = (event.key === Qt.Key_V)
                         && (event.modifiers & Qt.ControlModifier)
                         && !(event.modifiers & (Qt.AltModifier | Qt.MetaModifier | Qt.ShiftModifier));
@@ -818,6 +830,15 @@ ApplicationWindow {
                 iconColor: win.mutedColor
                 tooltip: "Font"
                 onClicked: fontPicker.opened ? fontPicker.close() : fontPicker.open()
+            }
+
+            FooterIconButton {
+                objectName: "typewriterSoundsButton"
+                iconName: backend.typewriterSounds ? "sound" : "muted"
+                iconColor: win.mutedColor
+                tooltip: backend.typewriterSounds ? "Turn Off Typewriter Sounds"
+                                                  : "Turn On Typewriter Sounds"
+                onClicked: backend.typewriterSounds = !backend.typewriterSounds
             }
 
             FooterIconButton {

@@ -7,10 +7,18 @@
         <file alias="UnsavedChangesDialog.qml">UnsavedChangesDialog.qml</file>
         <file alias="ExternalChangeDialog.qml">ExternalChangeDialog.qml</file>
         <file alias="FontPicker.qml">FontPicker.qml</file>
+        <file alias="TypewriterSounds.qml">TypewriterSounds.qml</file>
         <file alias="EditorMutations.js">EditorMutations.js</file>
         <file alias="fonts/IBMPlexMono-Regular.ttf">../fonts/IBMPlexMono-Regular.ttf</file>
         <file alias="fonts/IBMPlexMono-Italic.ttf">../fonts/IBMPlexMono-Italic.ttf</file>
         <file alias="fonts/IBMPlexMono-Bold.ttf">../fonts/IBMPlexMono-Bold.ttf</file>
         <file alias="fonts/IBMPlexMono-BoldItalic.ttf">../fonts/IBMPlexMono-BoldItalic.ttf</file>
+        <file alias="sounds/key1.wav">../sounds/key1.wav</file>
+        <file alias="sounds/key2.wav">../sounds/key2.wav</file>
+        <file alias="sounds/key3.wav">../sounds/key3.wav</file>
+        <file alias="sounds/key4.wav">../sounds/key4.wav</file>
+        <file alias="sounds/space.wav">../sounds/space.wav</file>
+        <file alias="sounds/backspace.wav">../sounds/backspace.wav</file>
+        <file alias="sounds/return.wav">../sounds/return.wav</file>
     </qresource>
 </RCC>
