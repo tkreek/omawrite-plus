@@ -52,6 +52,10 @@ Item {
                 else
                     index = (index + 1) % effects.length;
                 nextIndex[name] = index;
+                // A new carriage return cuts the last one short rather than
+                // ringing over it.
+                if (effects === returns)
+                    effects[index].stop();
                 effects[index].play();
             }
 
