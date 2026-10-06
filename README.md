@@ -23,6 +23,7 @@ Install via the Omarchy Package Repository via the `omawrite` package. It's inst
 - `Ctrl+H` opens find and replace.
 - `Ctrl+B`, `Ctrl+I`, and `Ctrl+K` insert bold, italic, and link Markdown.
 - `Ctrl+Shift+M` shows or hides the document's front matter.
+- `Ctrl+=` and `Ctrl+-` change the text size; `Ctrl+0` goes back to the desktop text size.
 - `Ctrl+?` shows the keyboard shortcut reference.
 
 Unsaved drafts are recovered after an abnormal exit. Omawrite also watches open files
@@ -36,7 +37,8 @@ line unfolds it while you edit. Omawrite remembers the choice.
 The font button in the footer picks the writing font from any installed text font,
 and Omawrite remembers the choice. IBM Plex Mono is the default.
 
-Text follows the desktop text size — `omarchy display text size`, or GNOME's
+The font picker also sets the writing text size. Until you pick one, text follows
+the desktop text size — `omarchy display text size`, or GNOME's
 `text-scaling-factor` — and re-flows without a restart. The default of 12px leaves
 Omawrite at the size it is designed around; larger and smaller sizes scale from there.
 

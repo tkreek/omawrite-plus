@@ -37,6 +37,7 @@
 constexpr qreal typoraLineHeightPercent = 140;
 const QString lastSaveDirectorySetting = QStringLiteral("file/lastSaveDirectory");
 const QString editorFontSetting = QStringLiteral("editor/font");
+const QString editorFontSizeSetting = QStringLiteral("editor/fontSize");
 const QString hideFrontMatterSetting = QStringLiteral("editor/hideFrontMatter");
 
 // Noto ships a separate family per script, which buries every other font in
@@ -94,6 +95,9 @@ QString Backend::normalizedLinkUrl(const QString &clipboardText) {
 
 Backend::Backend(QObject *parent) : QObject(parent) {
     m_hideFrontMatter = QSettings().value(hideFrontMatterSetting, false).toBool();
+    const int savedFontSize = QSettings().value(editorFontSizeSetting, 0).toInt();
+    if (savedFontSize >= minimumEditorFontSize && savedFontSize <= maximumEditorFontSize)
+        m_editorFontSize = savedFontSize;
     const QString savedFont = QSettings().value(editorFontSetting).toString();
     m_editorFont = !savedFont.isEmpty() && QFontDatabase::hasFamily(savedFont)
         ? savedFont
@@ -445,6 +449,20 @@ void Backend::setEditorFont(const QString &family) {
     m_editorFont = family;
     QSettings().setValue(editorFontSetting, family);
     emit editorFontChanged();
+}
+
+void Backend::setEditorFontSize(int pixels) {
+    if (pixels != 0)
+        pixels = qBound(minimumEditorFontSize, pixels, maximumEditorFontSize);
+    if (pixels == m_editorFontSize)
+        return;
+
+    m_editorFontSize = pixels;
+    if (pixels == 0)
+        QSettings().remove(editorFontSizeSetting);
+    else
+        QSettings().setValue(editorFontSizeSetting, pixels);
+    emit editorFontSizeChanged();
 }
 
 void Backend::setHideFrontMatter(bool hide) {

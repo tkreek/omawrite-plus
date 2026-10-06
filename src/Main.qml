@@ -25,7 +25,10 @@ ApplicationWindow {
     // `omarchy display text size` drives) anchored so its 12px default leaves
     // the app at the sizes it was designed around.
     readonly property real textScale: backend.textScale
-    readonly property int editorFontPixelSize: scaledSize(20)
+    // A size picked in the font picker overrides the desktop text size.
+    readonly property int systemEditorFontPixelSize: scaledSize(20)
+    readonly property int editorFontPixelSize: backend.editorFontSize > 0
+        ? backend.editorFontSize : systemEditorFontPixelSize
     readonly property int footerHeight: scaledSize(32)
     readonly property int editorWidth: Math.min(
         Math.round(writerFontMetrics.averageCharacterWidth * 65),
@@ -177,6 +180,28 @@ ApplicationWindow {
         sequence: "Ctrl+?"
         context: Qt.ApplicationShortcut
         onActivated: shortcutsDialog.open()
+    }
+
+    function stepEditorFontSize(direction) {
+        backend.editorFontSize = Math.max(10, Math.min(48, win.editorFontPixelSize + direction));
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+=", "Ctrl++"]
+        context: Qt.ApplicationShortcut
+        onActivated: win.stepEditorFontSize(1)
+    }
+
+    Shortcut {
+        sequence: "Ctrl+-"
+        context: Qt.ApplicationShortcut
+        onActivated: win.stepEditorFontSize(-1)
+    }
+
+    Shortcut {
+        sequence: "Ctrl+0"
+        context: Qt.ApplicationShortcut
+        onActivated: backend.editorFontSize = 0
     }
 
     Shortcut {
@@ -338,7 +363,7 @@ ApplicationWindow {
         standardButtons: Dialog.Close
         anchors.centerIn: parent
         contentItem: Label {
-            text: "Ctrl+S  Save\nCtrl+Shift+S  Save As\nCtrl+O  Open\nCtrl+N  New Window\nCtrl+F  Find\nCtrl+H  Find and Replace\nCtrl+B  Bold\nCtrl+I  Italic\nCtrl+K  Link\nCtrl+Shift+M  Show/Hide Front Matter\nCtrl+P  Print\nF11 / Super+F  Fullscreen\nCtrl+?  Shortcuts"
+            text: "Ctrl+S  Save\nCtrl+Shift+S  Save As\nCtrl+O  Open\nCtrl+N  New Window\nCtrl+F  Find\nCtrl+H  Find and Replace\nCtrl+B  Bold\nCtrl+I  Italic\nCtrl+K  Link\nCtrl+Shift+M  Show/Hide Front Matter\nCtrl+= / Ctrl+-  Text Size\nCtrl+0  System Text Size\nCtrl+P  Print\nF11 / Super+F  Fullscreen\nCtrl+?  Shortcuts"
             lineHeight: 1.5
         }
     }
@@ -832,7 +857,11 @@ ApplicationWindow {
             textColor: win.textColor
             mutedColor: win.mutedColor
             highlightColor: backend.themeAccent
+            fontSize: win.editorFontPixelSize
+            followsSystemSize: backend.editorFontSize === 0
             onFontChosen: function(family) { backend.editorFont = family; }
+            onFontSizeStepped: function(direction) { win.stepEditorFontSize(direction); }
+            onSystemSizeChosen: backend.editorFontSize = 0
             onClosed: editor.forceActiveFocus()
         }
 

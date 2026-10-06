@@ -31,6 +31,7 @@ class Backend : public QObject {
     Q_PROPERTY(QString themeSelection READ themeSelection NOTIFY themeColorsChanged)
     Q_PROPERTY(QString editorFont READ editorFont WRITE setEditorFont NOTIFY editorFontChanged)
     Q_PROPERTY(QStringList availableFonts READ availableFonts CONSTANT)
+    Q_PROPERTY(int editorFontSize READ editorFontSize WRITE setEditorFontSize NOTIFY editorFontSizeChanged)
     Q_PROPERTY(bool hideFrontMatter READ hideFrontMatter WRITE setHideFrontMatter NOTIFY hideFrontMatterChanged)
     Q_PROPERTY(bool hasFrontMatter READ hasFrontMatter NOTIFY hasFrontMatterChanged)
 
@@ -57,6 +58,11 @@ public:
     QString editorFont() const { return m_editorFont; }
     void setEditorFont(const QString &family);
     QStringList availableFonts() const;
+    // The writing text size in pixels, or 0 to follow the desktop text size.
+    int editorFontSize() const { return m_editorFontSize; }
+    void setEditorFontSize(int pixels);
+    static constexpr int minimumEditorFontSize = 10;
+    static constexpr int maximumEditorFontSize = 48;
     bool hideFrontMatter() const { return m_hideFrontMatter; }
     void setHideFrontMatter(bool hide);
     bool hasFrontMatter() const;
@@ -98,6 +104,7 @@ signals:
     void textScaleChanged();
     void themeColorsChanged();
     void editorFontChanged();
+    void editorFontSizeChanged();
     void hideFrontMatterChanged();
     void hasFrontMatterChanged();
     void closeAfterSave();
@@ -157,6 +164,7 @@ private:
     QString m_themeAccent;
     QString m_themeSelection;
     QString m_editorFont;
+    int m_editorFontSize = 0;
     bool m_hideFrontMatter = false;
     QFileSystemWatcher m_themeWatcher;
 };

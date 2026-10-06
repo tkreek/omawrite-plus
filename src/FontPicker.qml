@@ -14,8 +14,12 @@ Popup {
     property color mutedColor: "#909191"
     property color highlightColor: "#428bca"
     property real maximumHeight: 440
+    property int fontSize: 20
+    property bool followsSystemSize: true
 
     signal fontChosen(string family)
+    signal fontSizeStepped(int direction)
+    signal systemSizeChosen()
 
     readonly property var filteredFonts: {
         var query = filterField.text.trim().toLocaleLowerCase();
@@ -37,7 +41,7 @@ Popup {
     }
 
     // Shrink to fit when a filter leaves only a few fonts.
-    readonly property real headerHeight: scaledSize(34) + 13
+    readonly property real headerHeight: scaledSize(34) * 2 + 26
     height: Math.min(maximumHeight, topPadding + bottomPadding + headerHeight
                      + Math.max(scaledSize(36), fontList.contentHeight))
 
@@ -59,8 +63,106 @@ Popup {
         color: picker.darkMode ? "#22221f" : "#fffef2"
     }
 
+    component SizeButton: Label {
+        id: sizeButton
+        property bool enabledState: true
+        signal activated()
+
+        width: picker.scaledSize(28)
+        height: picker.scaledSize(28)
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        color: picker.textColor
+        opacity: enabledState ? 1 : 0.35
+        font.family: picker.defaultFont
+        font.pixelSize: picker.scaledSize(16)
+
+        background: Rectangle {
+            radius: 5
+            color: picker.highlightColor
+            opacity: sizeArea.containsMouse && sizeButton.enabledState ? 0.18 : 0
+        }
+
+        MouseArea {
+            id: sizeArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: if (sizeButton.enabledState) sizeButton.activated()
+        }
+    }
+
     contentItem: Column {
         spacing: 6
+
+        Item {
+            objectName: "fontSizeRow"
+            width: parent.width
+            height: picker.scaledSize(34)
+
+            Label {
+                anchors.left: parent.left
+                anchors.leftMargin: 8
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Size"
+                color: picker.mutedColor
+                font.family: picker.defaultFont
+                font.pixelSize: picker.scaledSize(14)
+            }
+
+            Row {
+                anchors.right: systemSize.left
+                anchors.rightMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 2
+
+                SizeButton {
+                    objectName: "smallerButton"
+                    text: "\u2212"
+                    enabledState: picker.fontSize > 10
+                    onActivated: picker.fontSizeStepped(-1)
+                }
+
+                Label {
+                    width: picker.scaledSize(44)
+                    height: picker.scaledSize(28)
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    text: picker.fontSize + "px"
+                    color: picker.textColor
+                    font.family: picker.defaultFont
+                    font.pixelSize: picker.scaledSize(14)
+                }
+
+                SizeButton {
+                    objectName: "largerButton"
+                    text: "+"
+                    enabledState: picker.fontSize < 48
+                    onActivated: picker.fontSizeStepped(1)
+                }
+            }
+
+            SizeButton {
+                id: systemSize
+                objectName: "systemSizeButton"
+                anchors.right: parent.right
+                anchors.rightMargin: 4
+                anchors.verticalCenter: parent.verticalCenter
+                width: implicitWidth + 12
+                text: picker.followsSystemSize ? "\u2713 System" : "System"
+                color: picker.followsSystemSize ? picker.textColor : picker.mutedColor
+                font.pixelSize: picker.scaledSize(12)
+                enabledState: true
+                onActivated: picker.systemSizeChosen()
+            }
+        }
+
+        Rectangle {
+            width: parent.width
+            height: 1
+            color: picker.mutedColor
+            opacity: 0.3
+        }
 
         Item {
             width: parent.width

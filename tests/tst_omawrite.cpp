@@ -346,6 +346,35 @@ private slots:
         backend.setTextScale(9.0 / 12.0);
         QCOMPARE(window->property("editorFontPixelSize").toInt(), 15);
         QCOMPARE(editor->property("font").value<QFont>().pixelSize(), 15);
+
+        // A size picked in the app wins over the desktop until it is cleared.
+        backend.setEditorFontSize(30);
+        QCOMPARE(editor->property("font").value<QFont>().pixelSize(), 30);
+        backend.setTextScale(16.0 / 12.0);
+        QCOMPARE(editor->property("font").value<QFont>().pixelSize(), 30);
+        QCOMPARE(Backend().editorFontSize(), 30);
+
+        backend.setEditorFontSize(0);
+        QCOMPARE(editor->property("font").value<QFont>().pixelSize(), 27);
+        QCOMPARE(Backend().editorFontSize(), 0);
+
+        backend.setEditorFontSize(500);
+        QCOMPARE(backend.editorFontSize(), Backend::maximumEditorFontSize);
+        backend.setEditorFontSize(0);
+
+        // The font picker steps from whatever size is showing.
+        QObject *larger = window->findChild<QObject *>(QStringLiteral("largerButton"));
+        QObject *smaller = window->findChild<QObject *>(QStringLiteral("smallerButton"));
+        QObject *system = window->findChild<QObject *>(QStringLiteral("systemSizeButton"));
+        QVERIFY(larger && smaller && system);
+        QVERIFY(QMetaObject::invokeMethod(larger, "activated"));
+        QCOMPARE(backend.editorFontSize(), 28);
+        QVERIFY(QMetaObject::invokeMethod(smaller, "activated"));
+        QVERIFY(QMetaObject::invokeMethod(smaller, "activated"));
+        QCOMPARE(backend.editorFontSize(), 26);
+        QVERIFY(QMetaObject::invokeMethod(system, "activated"));
+        QCOMPARE(backend.editorFontSize(), 0);
+        QCOMPARE(editor->property("font").value<QFont>().pixelSize(), 27);
     }
 
     void remembersLastSaveDirectory() {
