@@ -561,6 +561,7 @@ ApplicationWindow {
                     color: win.strongTextColor
                 }
                 onCursorRectangleChanged: editorFlick.ensureCursorVisible()
+                onCursorPositionChanged: Qt.callLater(backend.setCursorPosition, cursorPosition)
                 onFontChanged: backend.documentFontChanged()
 
                 function replaceSelectionWith(replacement) {
@@ -671,44 +672,6 @@ ApplicationWindow {
                         replaceSelectionWith(pastedText);
                 }
 
-                function skipHiddenForward(position) {
-                    var pos = position;
-                    var ranges = backend.hiddenRangesAt(pos);
-                    for (var i = 0; i < ranges.length; i++) {
-                        if (pos >= ranges[i].start && pos < ranges[i].end) {
-                            pos = ranges[i].end;
-                            i = -1;
-                        }
-                    }
-                    return pos;
-                }
-
-                function skipHiddenBackward(position) {
-                    var pos = position;
-                    var ranges = backend.hiddenRangesAt(pos);
-                    for (var i = ranges.length - 1; i >= 0; i--) {
-                        if (pos > ranges[i].start && pos <= ranges[i].end) {
-                            pos = ranges[i].start;
-                            i = ranges.length;
-                        }
-                    }
-                    return pos;
-                }
-
-                function moveCursorVisibly(direction) {
-                    if (selectionStart !== selectionEnd) {
-                        cursorPosition = direction > 0
-                            ? Math.max(selectionStart, selectionEnd)
-                            : Math.min(selectionStart, selectionEnd);
-                        return;
-                    }
-
-                    var pos = Math.max(0, Math.min(text.length, cursorPosition + direction));
-                    cursorPosition = direction > 0
-                        ? skipHiddenForward(pos)
-                        : skipHiddenBackward(pos);
-                }
-
                 function movePage(direction, extendSelection) {
                     var pageStep = Math.max(win.editorFontPixelSize,
                                             editorFlick.height - win.editorFontPixelSize * 2);
@@ -757,14 +720,6 @@ ApplicationWindow {
                     } else if (!commandModifier && event.key === Qt.Key_Backspace
                                && deleteParagraphBreakBehindCursor()) {
                         event.accepted = true;
-                    } else if (!commandModifier && !(event.modifiers & Qt.ShiftModifier)
-                               && event.key === Qt.Key_Right) {
-                        moveCursorVisibly(1);
-                        event.accepted = true;
-                    } else if (!commandModifier && !(event.modifiers & Qt.ShiftModifier)
-                               && event.key === Qt.Key_Left) {
-                        moveCursorVisibly(-1);
-                        event.accepted = true;
                     } else if (!commandModifier
                                && (event.key === Qt.Key_PageDown || event.key === Qt.Key_PageUp)) {
                         movePage(event.key === Qt.Key_PageDown ? 1 : -1,
@@ -794,6 +749,7 @@ ApplicationWindow {
 
                 Component.onCompleted: {
                     backend.attachDocument(textDocument);
+                    backend.setCursorPosition(cursorPosition);
                     forceActiveFocus();
                 }
             }

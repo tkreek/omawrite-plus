@@ -93,6 +93,53 @@ private slots:
         QCOMPARE(markup.at(2).markers[0].length, 1);
     }
 
+    void keepsCodeSpansLiteral() {
+        const auto markup = MarkdownHighlighter::inlineMarkup(
+            QStringLiteral("`**not bold**` and ~~gone~~"));
+        QCOMPARE(markup.size(), 2);
+        QCOMPARE(markup.at(0).kind, MarkdownHighlighter::InlineKind::Strike);
+        QCOMPARE(markup.at(0).content.start, 21);
+        QCOMPARE(markup.at(1).kind, MarkdownHighlighter::InlineKind::Code);
+        QCOMPARE(markup.at(1).content.length, 12);
+    }
+
+    void revealsMarkdownOnlyOnTheActiveLine() {
+        QTextDocument document;
+        QFont font;
+        font.setPixelSize(20);
+        document.setDefaultFont(font);
+        document.setPlainText(QStringLiteral("# Title\n**bold**\n```\ncode\n```"));
+        MarkdownHighlighter highlighter(&document);
+        highlighter.rehighlight();
+
+        const auto formatAt = [&](int blockNumber, int column) {
+            const QTextBlock block = document.findBlockByNumber(blockNumber);
+            for (const QTextLayout::FormatRange &range : block.layout()->formats()) {
+                if (column >= range.start && column < range.start + range.length)
+                    return range.format;
+            }
+            return QTextCharFormat();
+        };
+        const auto hidden = [&](int blockNumber, int column) {
+            return formatAt(blockNumber, column).fontPointSize() == 1.0;
+        };
+
+        QVERIFY(hidden(0, 0));
+        QVERIFY(hidden(1, 0));
+        QCOMPARE(formatAt(0, 2).intProperty(QTextFormat::FontPixelSize), 32);
+        QVERIFY(formatAt(3, 0).background().style() != Qt::NoBrush);
+
+        highlighter.setActiveBlock(1);
+        QVERIFY(hidden(0, 0));
+        QVERIFY(!hidden(1, 0));
+        QCOMPARE(formatAt(1, 3).fontWeight(), int(QFont::Bold));
+
+        highlighter.setActiveBlock(0);
+        QVERIFY(!hidden(0, 0));
+        QCOMPARE(formatAt(0, 0).intProperty(QTextFormat::FontPixelSize), 32);
+        QVERIFY(hidden(1, 0));
+    }
+
     void loadsCurrentOmarchyTheme() {
         QTemporaryDir homeDirectory;
         QVERIFY(homeDirectory.isValid());

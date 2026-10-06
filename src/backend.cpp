@@ -386,33 +386,14 @@ bool Backend::editorTextChanged() {
     return true;
 }
 
-QVariantList Backend::hiddenRangesAt(int position) const {
-    QVariantList ranges;
-    if (!m_document)
-        return ranges;
+// The highlighter reveals the raw Markdown of the block holding the caret.
+void Backend::setCursorPosition(int position) {
+    if (!m_document || !m_highlighter)
+        return;
 
     const QTextBlock block =
         m_document->findBlock(qBound(0, position, m_document->characterCount() - 1));
-    if (!block.isValid())
-        return ranges;
-
-    const int lineStart = block.position();
-    QList<QPair<int, int>> spans;
-    const QList<MarkdownHighlighter::InlineMarkup> markup =
-        MarkdownHighlighter::inlineMarkup(block.text());
-    for (const MarkdownHighlighter::InlineMarkup &item : markup) {
-        for (const MarkdownHighlighter::Span &marker : item.markers) {
-            spans.append({lineStart + marker.start,
-                          lineStart + marker.start + marker.length});
-        }
-    }
-    std::sort(spans.begin(), spans.end());
-
-    for (const auto &span : spans) {
-        ranges.append(QVariantMap{{QStringLiteral("start"), span.first},
-                                  {QStringLiteral("end"), span.second}});
-    }
-    return ranges;
+    m_highlighter->setActiveBlock(block.isValid() ? block.blockNumber() : -1);
 }
 
 void Backend::setSearchHighlight(const QString &query, int currentMatchStart) {
