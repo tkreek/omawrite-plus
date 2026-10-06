@@ -12,6 +12,7 @@ public Freesound previews, so it needs network access and ffmpeg.
 """
 
 import array
+import math
 import os
 import subprocess
 import tempfile
@@ -35,8 +36,14 @@ def decode(url, directory):
     source = os.path.join(directory, os.path.basename(url))
     urllib.request.urlretrieve(url, source)
     target = source + ".wav"
+    # A typewriter's click lives well above 180 Hz. What sits below it is the
+    # desk and the machine's body thumping, which the bass boost on laptop
+    # speaker correction (such as Asahi's) turns into an audible pop. The
+    # top end above 11 kHz is mostly lossy-preview hiss.
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", source, "-ac", "1", "-ar",
-                    str(RATE), "-af", "highpass=f=70", target], check=True)
+                    str(RATE), "-af",
+                    "highpass=f=180:poles=2,highpass=f=180:poles=2,lowpass=f=11000",
+                    target], check=True)
     with wave.open(target) as audio:
         return [s / 32768 for s in array.array("h", audio.readframes(audio.getnframes()))]
 
@@ -64,9 +71,11 @@ def strike(samples, around, length):
     return cut(samples, (first + onset * step) / RATE, length, lead=0.003)
 
 
-def normalize(clip, peak):
-    loudest = max(abs(s) for s in clip) or 1.0
-    return [s * peak / loudest for s in clip]
+def normalize(clip, level):
+    """Brings a clip to a common loudness rather than a common peak, then
+    rounds off the sharpest part of the strike so it cannot crack."""
+    rms = math.sqrt(sum(s * s for s in clip) / len(clip)) or 1.0
+    return [math.tanh(s * level / rms) * 0.85 for s in clip]
 
 
 def mix(target, source, offset):
@@ -93,16 +102,16 @@ def main():
         bell = decode(BELL_URL, directory)
 
     for index, start in enumerate(KEYS):
-        write(f"key{index + 1}.wav", normalize(strike(typing, start, 0.18), 0.8))
+        write(f"key{index + 1}.wav", normalize(strike(typing, start, 0.18), 0.1))
     for index, start in enumerate(SPACES):
-        write(f"space{index + 1}.wav", normalize(strike(typing, start, 0.18), 0.7))
-    write("backspace.wav", normalize(strike(typing, BACKSPACE, 0.18), 0.6))
+        write(f"space{index + 1}.wav", normalize(strike(typing, start, 0.18), 0.09))
+    write("backspace.wav", normalize(strike(typing, BACKSPACE, 0.18), 0.075))
 
     # The margin bell, then the carriage sliding home and hitting its stop,
     # with the gap where the typist reaches for the lever taken out.
     ring = cut(bell, 0.0, 0.75, fade_out=0.2, lead=0.0)
     carriage = cut(bell, 1.65, 1.2, fade_in=0.05, fade_out=0.1, lead=0.0)
-    write("return.wav", normalize(mix(ring, carriage, 0.55), 0.7))
+    write("return.wav", normalize(mix(ring, carriage, 0.55), 0.08))
 
 
 if __name__ == "__main__":
