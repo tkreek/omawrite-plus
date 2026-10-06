@@ -205,6 +205,12 @@ ApplicationWindow {
     }
 
     Shortcut {
+        sequence: "F7"
+        context: Qt.ApplicationShortcut
+        onActivated: backend.spellCheck = !backend.spellCheck
+    }
+
+    Shortcut {
         sequence: "Ctrl+Shift+T"
         context: Qt.ApplicationShortcut
         onActivated: backend.typewriterSounds = !backend.typewriterSounds
@@ -374,7 +380,7 @@ ApplicationWindow {
         standardButtons: Dialog.Close
         anchors.centerIn: parent
         contentItem: Label {
-            text: "Ctrl+S  Save\nCtrl+Shift+S  Save As\nCtrl+O  Open\nCtrl+N  New Window\nCtrl+F  Find\nCtrl+H  Find and Replace\nCtrl+B  Bold\nCtrl+I  Italic\nCtrl+K  Link\nCtrl+Shift+M  Show/Hide Front Matter\nCtrl+= / Ctrl+-  Text Size\nCtrl+0  System Text Size\nCtrl+Shift+T  Typewriter Sounds\nCtrl+P  Print\nF11 / Super+F  Fullscreen\nCtrl+?  Shortcuts"
+            text: "Ctrl+S  Save\nCtrl+Shift+S  Save As\nCtrl+O  Open\nCtrl+N  New Window\nCtrl+F  Find\nCtrl+H  Find and Replace\nCtrl+B  Bold\nCtrl+I  Italic\nCtrl+K  Link\nCtrl+Shift+M  Show/Hide Front Matter\nCtrl+= / Ctrl+-  Text Size\nCtrl+0  System Text Size\nCtrl+Shift+T  Typewriter Sounds\nF7  Spell Check\nCtrl+P  Print\nF11 / Super+F  Fullscreen\nCtrl+?  Shortcuts"
             lineHeight: 1.5
         }
     }
@@ -603,6 +609,20 @@ ApplicationWindow {
                     color: win.strongTextColor
                 }
                 onCursorRectangleChanged: editorFlick.ensureCursorVisible()
+
+                TapHandler {
+                    acceptedButtons: Qt.RightButton
+                    onTapped: function(eventPoint) {
+                        var position = editor.positionAt(eventPoint.position.x,
+                                                         eventPoint.position.y);
+                        var misspelling = backend.misspellingAt(position);
+                        if (misspelling.word === undefined)
+                            return;
+                        spellingMenu.misspelling = misspelling;
+                        spellingMenu.popup(editor, eventPoint.position.x,
+                                           eventPoint.position.y);
+                    }
+                }
                 onCursorPositionChanged: Qt.callLater(backend.setCursorPosition, cursorPosition)
                 onFontChanged: backend.documentFontChanged()
 
@@ -833,6 +853,16 @@ ApplicationWindow {
             }
 
             FooterIconButton {
+                objectName: "spellCheckButton"
+                iconName: backend.spellCheck ? "spellcheck" : "spellcheckoff"
+                iconColor: win.mutedColor
+                tooltip: !backend.spellCheckAvailable
+                    ? "Spell Check needs a dictionary (hunspell-en_us)"
+                    : backend.spellCheck ? "Turn Off Spell Check" : "Turn On Spell Check"
+                onClicked: backend.spellCheck = !backend.spellCheck
+            }
+
+            FooterIconButton {
                 objectName: "typewriterSoundsButton"
                 iconName: backend.typewriterSounds ? "sound" : "muted"
                 iconColor: win.mutedColor
@@ -860,6 +890,48 @@ ApplicationWindow {
                 width: Math.min(360, win.width / 3)
                 height: win.scaledSize(16)
                 verticalAlignment: Text.AlignVCenter
+            }
+        }
+
+        Menu {
+            id: spellingMenu
+            objectName: "spellingMenu"
+            property var misspelling: ({})
+            readonly property var suggestions: misspelling.suggestions || []
+
+            function replaceWith(replacement) {
+                EditorMutations.replaceRange(editor, misspelling.start, misspelling.end,
+                                             replacement);
+                editor.forceActiveFocus();
+            }
+
+            Instantiator {
+                model: spellingMenu.suggestions
+                delegate: MenuItem {
+                    required property string modelData
+                    text: modelData
+                    font.bold: true
+                    onTriggered: spellingMenu.replaceWith(modelData)
+                }
+                onObjectAdded: function(index, object) { spellingMenu.insertItem(index, object); }
+                onObjectRemoved: function(index, object) { spellingMenu.removeItem(object); }
+            }
+
+            MenuItem {
+                text: "No Suggestions"
+                enabled: false
+                visible: spellingMenu.suggestions.length === 0
+                height: visible ? implicitHeight : 0
+            }
+
+            MenuSeparator {}
+
+            MenuItem {
+                text: "Add \u201c" + (spellingMenu.misspelling.word || "") + "\u201d to Dictionary"
+                onTriggered: {
+                    backend.addToDictionary(spellingMenu.misspelling.word);
+                    editor.forceActiveFocus();
+                }
             }
         }
 

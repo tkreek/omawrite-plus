@@ -5,6 +5,8 @@
 #include <QTextCharFormat>
 #include <QTimer>
 
+class SpellChecker;
+
 class MarkdownHighlighter : public QSyntaxHighlighter {
     Q_OBJECT
 
@@ -14,7 +16,11 @@ public:
     void setDarkMode(bool darkMode);
     void setColors(const QString &background, const QString &foreground, const QString &accent);
     void setSearch(const QString &query, int currentMatchStart);
-    void setActiveBlock(int blockNumber);
+    // The caret's block shows raw Markdown; its column keeps the word being
+    // typed from being flagged before it is finished.
+    void setActiveBlock(int blockNumber, int column = -1);
+    // Underlines misspelled words while set; null turns spell check off.
+    void setSpellChecker(SpellChecker *spellChecker);
     int activeBlock() const { return m_activeBlock; }
     void setFrontMatterHidden(bool hidden);
     bool hasFrontMatter() const { return m_frontMatterEnd > 0; }
@@ -27,6 +33,9 @@ public:
         int start;
         int length;
     };
+
+    // Marks the characters of a misspelled word in the layout's formats.
+    static constexpr int MisspelledProperty = QTextFormat::UserProperty + 1;
 
     enum class InlineKind { Bold, Italic, Link, Strike, Code };
 
@@ -60,10 +69,14 @@ private:
     void highlightMarkers(const QString &text, bool active);
     void highlightInline(const QString &text, bool active);
     void highlightSearch(const QString &text);
+    void highlightSpelling(const QString &text, bool active);
+    QPair<int, int> typedWord(const QTextBlock &block, int column) const;
     void mergeFormat(int start, int length, const QTextCharFormat &format);
 
     bool m_darkMode = true;
     int m_activeBlock = -1;
+    int m_activeColumn = -1;
+    SpellChecker *m_spellChecker = nullptr;
     int m_frontMatterEnd = -1;
     int m_collapsedThrough = 0;
     bool m_frontMatterHidden = false;
@@ -89,6 +102,8 @@ private:
     QTextCharFormat m_linkFormat;
     QString m_searchQuery;
     int m_currentMatchStart = -1;
+    QTextCharFormat m_misspelledFormat;
+    QTextCharFormat m_misspelledPlainFormat;
     QTextCharFormat m_searchFormat;
     QTextCharFormat m_currentSearchFormat;
 };

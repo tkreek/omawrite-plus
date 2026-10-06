@@ -60,6 +60,18 @@ Item {
                 context.lineTo(13, 13.5);
                 context.moveTo(5, 9.5);
                 context.lineTo(11, 9.5);
+            } else if (control.iconName === "spellcheck" || control.iconName === "spellcheckoff") {
+                // A tick over a squiggly spelling underline.
+                context.moveTo(3.5, 6.5);
+                context.lineTo(6.5, 9.5);
+                context.lineTo(12.5, 3);
+                context.moveTo(1.5, 13);
+                for (var step = 0; step < 6; step++)
+                    context.lineTo(3.7 + step * 2.2, step % 2 === 0 ? 11.5 : 13);
+                if (control.iconName === "spellcheckoff") {
+                    context.moveTo(2.5, 2.5);
+                    context.lineTo(13.5, 13.5);
+                }
             } else if (control.iconName === "sound" || control.iconName === "muted") {
                 context.moveTo(2.5, 6);
                 context.lineTo(5, 6);

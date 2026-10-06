@@ -25,6 +25,7 @@ Install via the Omarchy Package Repository via the `omawrite` package. It's inst
 - `Ctrl+Shift+M` shows or hides the document's front matter.
 - `Ctrl+=` and `Ctrl+-` change the text size; `Ctrl+0` goes back to the desktop text size.
 - `Ctrl+Shift+T` turns typewriter sounds on or off.
+- `F7` turns spell check on or off.
 - `Ctrl+?` shows the keyboard shortcut reference.
 
 Unsaved drafts are recovered after an abnormal exit. Omawrite also watches open files
@@ -43,6 +44,12 @@ the desktop text size — `omarchy display text size`, or GNOME's
 `text-scaling-factor` — and re-flows without a restart. The default of 12px leaves
 Omawrite at the size it is designed around; larger and smaller sizes scale from there.
 
+Misspelled words get a red underline, leaving out code, front matter, link
+addresses, and the word you are still typing. Right-click one for suggestions or
+to add it to your dictionary. The tick button in the footer, or `F7`, turns spell
+check off. It uses Hunspell with the dictionary for your locale, so install one
+such as `hunspell-en_us`.
+
 The speaker button in the footer, or `Ctrl+Shift+T`, turns on typewriter sounds:
 an IBM Selectric II for typing, and a margin bell and carriage return for `Enter`.
 They are off by default. The sounds are cut from two CC0 recordings on Freesound,
@@ -53,6 +60,7 @@ by `sounds/extract.py`.
 ## Requirements
 
 - Qt 6: `qt6-base`, `qt6-declarative`, `qt6-quickcontrols2`, `qt6-multimedia`
+- `hunspell` and a Hunspell dictionary such as `hunspell-en_us`
 - `xdg-desktop-portal` and a portal backend
 
 The IBM Plex Mono font is bundled under the SIL Open Font License 1.1; see

@@ -7,6 +7,7 @@
 
 #include "backend.h"
 #include "markdownhighlighter.h"
+#include "spellchecker.h"
 
 class OmawriteTest : public QObject {
     Q_OBJECT
@@ -195,6 +196,95 @@ private slots:
 
         backend.setTypewriterSounds(false);
         QCOMPARE(Backend().typewriterSounds(), false);
+    }
+
+    void findsWordsWorthChecking() {
+        const QString text = QStringLiteral("Visit https://ex.com or me@ex.com, it\u2019s NASA 3rd teh");
+        QStringList found;
+        for (const SpellChecker::Word &word : SpellChecker::words(text))
+            found.append(text.mid(word.start, word.length));
+        QCOMPARE(found, QStringList({QStringLiteral("Visit"), QStringLiteral("or"),
+                                     QStringLiteral("it\u2019s"), QStringLiteral("teh")}));
+    }
+
+    void underlinesMisspelledProse() {
+        if (SpellChecker::dictionaryPath(QStringLiteral("en_US")).isEmpty())
+            QSKIP("No en_US Hunspell dictionary installed (set DICPATH to use another).");
+
+        QStandardPaths::setTestModeEnabled(true);
+        QFile::remove(SpellChecker::personalDictionaryPath());
+        SpellChecker checker(QStringLiteral("en_US"));
+        QVERIFY(checker.isAvailable());
+        QVERIFY(checker.isCorrect(QStringLiteral("doesn\u2019t")));
+        QVERIFY(!checker.isCorrect(QStringLiteral("teh")));
+        QVERIFY(checker.suggestions(QStringLiteral("teh")).contains(QStringLiteral("the")));
+
+        QTextDocument document;
+        document.setPlainText(QStringLiteral("I saw teh `teh` [teh](https://tehx.com)\n```\nteh\n```"));
+        MarkdownHighlighter highlighter(&document);
+        highlighter.setSpellChecker(&checker);
+        highlighter.rehighlight();
+
+        const auto misspelled = [&](int blockNumber, int column) {
+            const QTextBlock block = document.findBlockByNumber(blockNumber);
+            for (const QTextLayout::FormatRange &range : block.layout()->formats()) {
+                if (column >= range.start && column < range.start + range.length)
+                    return range.format.boolProperty(MarkdownHighlighter::MisspelledProperty);
+            }
+            return false;
+        };
+
+        QVERIFY(misspelled(0, 6));    // teh
+        QVERIFY(!misspelled(0, 11));  // `teh`
+        QVERIFY(misspelled(0, 17));   // [teh] link text
+        QVERIFY(!misspelled(0, 30));  // the link's address
+        QVERIFY(!misspelled(2, 0));   // fenced code
+
+        // The word being typed is left alone until the caret leaves it.
+        highlighter.setActiveBlock(0, 9);
+        QVERIFY(!misspelled(0, 6));
+        highlighter.setActiveBlock(0, 2);
+        QVERIFY(misspelled(0, 6));
+
+        checker.addWord(QStringLiteral("teh"));
+        QVERIFY(SpellChecker(QStringLiteral("en_US")).isCorrect(QStringLiteral("teh")));
+        highlighter.rehighlight();
+        QVERIFY(!misspelled(0, 6));
+
+        highlighter.setSpellChecker(nullptr);
+        QFile::remove(SpellChecker::personalDictionaryPath());
+        QStandardPaths::setTestModeEnabled(false);
+    }
+
+    void offersSpellingSuggestionsInTheEditor() {
+        if (SpellChecker::dictionaryPath().isEmpty())
+            QSKIP("No Hunspell dictionary installed for the system locale.");
+
+        const QString mainQmlPath = QFINDTESTDATA("../src/Main.qml");
+        Backend backend;
+        backend.setSpellCheck(true);
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
+        QQmlComponent component(&engine, QUrl::fromLocalFile(mainQmlPath));
+        QScopedPointer<QObject> window(component.create());
+        QVERIFY2(window, qPrintable(component.errorString()));
+        QObject *editor = window->findChild<QObject *>(QStringLiteral("sourceEditor"));
+        QVERIFY(editor);
+
+        editor->setProperty("text", QStringLiteral("Fix teh word"));
+        editor->setProperty("cursorPosition", 0);
+        QCoreApplication::processEvents();
+
+        const QVariantMap misspelling = backend.misspellingAt(5);
+        QCOMPARE(misspelling.value(QStringLiteral("word")).toString(), QStringLiteral("teh"));
+        QCOMPARE(misspelling.value(QStringLiteral("start")).toInt(), 4);
+        QVERIFY(misspelling.value(QStringLiteral("suggestions")).toStringList()
+                    .contains(QStringLiteral("the")));
+        QVERIFY(backend.misspellingAt(1).isEmpty());
+
+        backend.setSpellCheck(false);
+        QVERIFY(backend.misspellingAt(5).isEmpty());
+        QVERIFY(window->findChild<QObject *>(QStringLiteral("spellingMenu")));
     }
 
     void loadsCurrentOmarchyTheme() {

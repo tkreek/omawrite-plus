@@ -12,6 +12,7 @@
 #include <memory>
 
 class MarkdownHighlighter;
+class SpellChecker;
 class QTextDocument;
 class QWindow;
 class QLockFile;
@@ -34,6 +35,8 @@ class Backend : public QObject {
     Q_PROPERTY(int editorFontSize READ editorFontSize WRITE setEditorFontSize NOTIFY editorFontSizeChanged)
     Q_PROPERTY(bool hideFrontMatter READ hideFrontMatter WRITE setHideFrontMatter NOTIFY hideFrontMatterChanged)
     Q_PROPERTY(bool typewriterSounds READ typewriterSounds WRITE setTypewriterSounds NOTIFY typewriterSoundsChanged)
+    Q_PROPERTY(bool spellCheck READ spellCheck WRITE setSpellCheck NOTIFY spellCheckChanged)
+    Q_PROPERTY(bool spellCheckAvailable READ spellCheckAvailable CONSTANT)
     Q_PROPERTY(bool hasFrontMatter READ hasFrontMatter NOTIFY hasFrontMatterChanged)
 
 public:
@@ -67,6 +70,9 @@ public:
     bool hideFrontMatter() const { return m_hideFrontMatter; }
     void setHideFrontMatter(bool hide);
     bool hasFrontMatter() const;
+    bool spellCheck() const { return m_spellCheck; }
+    void setSpellCheck(bool enabled);
+    bool spellCheckAvailable() const;
     bool typewriterSounds() const { return m_typewriterSounds; }
     void setTypewriterSounds(bool enabled);
     static QString defaultEditorFont();
@@ -92,6 +98,10 @@ public:
     Q_INVOKABLE QString clipboardText() const;
     Q_INVOKABLE bool editorTextChanged();
     Q_INVOKABLE void setCursorPosition(int position);
+    // The underlined word at a document position, as {start, end, word,
+    // suggestions}, or an empty map when the word there is spelled right.
+    Q_INVOKABLE QVariantMap misspellingAt(int position);
+    Q_INVOKABLE void addToDictionary(const QString &word);
     Q_INVOKABLE void setSearchHighlight(const QString &query, int currentMatchStart);
     Q_INVOKABLE void openExternalUrl(const QUrl &url);
     Q_INVOKABLE QVariantMap windowGeometry() const;
@@ -111,6 +121,7 @@ signals:
     void hideFrontMatterChanged();
     void hasFrontMatterChanged();
     void typewriterSoundsChanged();
+    void spellCheckChanged();
     void closeAfterSave();
     void openDialogRequested();
     void saveDialogRequested(const QUrl &suggestedUrl);
@@ -137,6 +148,7 @@ private:
     QString recoveryPath() const;
     void watchCurrentFile();
     void loadOmarchyTheme();
+    void applySpellCheck();
     void watchOmarchyTheme();
 
     QUrl m_fileUrl;
@@ -171,5 +183,7 @@ private:
     int m_editorFontSize = 0;
     bool m_hideFrontMatter = false;
     bool m_typewriterSounds = false;
+    bool m_spellCheck = true;
+    std::unique_ptr<SpellChecker> m_spellChecker;
     QFileSystemWatcher m_themeWatcher;
 };

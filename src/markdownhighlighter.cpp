@@ -1,4 +1,5 @@
 #include "markdownhighlighter.h"
+#include "spellchecker.h"
 
 #include <QColor>
 #include <QFont>
@@ -7,6 +8,7 @@
 #include <QFontMetricsF>
 #include <QTextBlock>
 #include <QTextDocument>
+
 
 namespace {
 
@@ -81,22 +83,50 @@ void MarkdownHighlighter::setSearch(const QString &query, int currentMatchStart)
 
 // The block holding the caret shows its raw Markdown; every other block is
 // rendered. Only the two blocks whose state flips need to be redrawn.
-void MarkdownHighlighter::setActiveBlock(int blockNumber) {
-    if (m_activeBlock == blockNumber)
+void MarkdownHighlighter::setActiveBlock(int blockNumber, int column) {
+    if (m_activeBlock == blockNumber && m_activeColumn == column)
         return;
 
     const int previous = m_activeBlock;
+    const int previousColumn = m_activeColumn;
     const bool wasInFrontMatter = caretInFrontMatter();
     m_activeBlock = blockNumber;
+    m_activeColumn = column;
     if (!document())
         return;
     if (wasInFrontMatter != caretInFrontMatter())
         applyFrontMatterVisibility();
-    for (const int number : {previous, blockNumber}) {
-        const QTextBlock block = document()->findBlockByNumber(number);
-        if (block.isValid())
-            rehighlightBlock(block);
+
+    if (previous != blockNumber) {
+        for (const int number : {previous, blockNumber}) {
+            const QTextBlock block = document()->findBlockByNumber(number);
+            if (block.isValid())
+                rehighlightBlock(block);
+        }
+        return;
     }
+
+    // Moving within a line only matters once the caret leaves (or enters) a
+    // word that spell check has been holding back.
+    if (!m_spellChecker)
+        return;
+    const QTextBlock block = document()->findBlockByNumber(blockNumber);
+    if (block.isValid() && typedWord(block, previousColumn) != typedWord(block, column))
+        rehighlightBlock(block);
+}
+
+void MarkdownHighlighter::setSpellChecker(SpellChecker *spellChecker) {
+    if (m_spellChecker == spellChecker)
+        return;
+    m_spellChecker = spellChecker;
+    rehighlight();
+}
+
+QPair<int, int> MarkdownHighlighter::typedWord(const QTextBlock &block, int column) const {
+    if (column < 0)
+        return {-1, -1};
+    const SpellChecker::Word word = SpellChecker::wordAt(block.text(), column);
+    return {word.start, word.length};
 }
 
 void MarkdownHighlighter::setFrontMatterHidden(bool hidden) {
@@ -283,6 +313,17 @@ void MarkdownHighlighter::rebuildFormats() {
     m_linkFormat.setForeground(link);
     m_linkFormat.setFontUnderline(true);
 
+    m_misspelledFormat = QTextCharFormat();
+    // Qt Quick only draws plain underlines, not the wavy spell-check style.
+    m_misspelledFormat.setUnderlineStyle(QTextCharFormat::SingleUnderline);
+    m_misspelledFormat.setProperty(MisspelledProperty, true);
+    m_misspelledFormat.setUnderlineColor(m_darkMode ? QColor(QStringLiteral("#e0575b"))
+                                                    : QColor(QStringLiteral("#d12f2f")));
+    // Qt Quick paints the underline in the text colour unless the format
+    // spells the text colour out, so plain body text needs one to go red.
+    m_misspelledPlainFormat = m_misspelledFormat;
+    m_misspelledPlainFormat.setForeground(text);
+
     m_searchFormat = QTextCharFormat();
     m_searchFormat.setBackground(m_darkMode ? QColor(QStringLiteral("#725b18"))
                                             : QColor(QStringLiteral("#ffe58a")));
@@ -308,6 +349,7 @@ void MarkdownHighlighter::highlightBlock(const QString &text) {
             || text.contains(QLatin1Char('~'))) {
             highlightInline(text, active);
         }
+        highlightSpelling(text, active);
     }
     highlightSearch(text);
 }
@@ -346,6 +388,41 @@ void MarkdownHighlighter::highlightFrontMatter(const QString &text, bool fence) 
     const QRegularExpressionMatch key = keyRe.match(text);
     if (key.hasMatch()) {
         setFormat(key.capturedStart(2), key.capturedLength(2) + 1, m_frontMatterKeyFormat);
+    }
+}
+
+void MarkdownHighlighter::highlightSpelling(const QString &text, bool active) {
+    if (!m_spellChecker)
+        return;
+
+    // Code is literal and a link's destination is not prose, so blank them
+    // out (keeping every column where it was) before picking out words.
+    QString prose = text;
+    for (const InlineMarkup &item : inlineMarkup(text)) {
+        if (item.kind == InlineKind::Code) {
+            const int start = item.markers[0].start;
+            prose.replace(start, item.markers[1].start + item.markers[1].length - start,
+                          QString(item.markers[1].start + item.markers[1].length - start,
+                                  QLatin1Char(' ')));
+        } else if (item.kind == InlineKind::Link) {
+            prose.replace(item.markers[1].start, item.markers[1].length,
+                          QString(item.markers[1].length, QLatin1Char(' ')));
+        }
+    }
+
+    const QPair<int, int> typing = active ? typedWord(currentBlock(), m_activeColumn)
+                                          : QPair<int, int>{-1, -1};
+    for (const SpellChecker::Word &word : SpellChecker::words(prose)) {
+        if (word.start == typing.first)
+            continue;
+        if (m_spellChecker->isCorrect(text.mid(word.start, word.length)))
+            continue;
+        for (int i = word.start; i < word.start + word.length; ++i) {
+            QTextCharFormat merged = format(i);
+            merged.merge(merged.hasProperty(QTextFormat::ForegroundBrush)
+                             ? m_misspelledFormat : m_misspelledPlainFormat);
+            setFormat(i, 1, merged);
+        }
     }
 }
 

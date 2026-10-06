@@ -33,11 +33,13 @@
 #include <algorithm>
 
 #include "markdownhighlighter.h"
+#include "spellchecker.h"
 
 constexpr qreal typoraLineHeightPercent = 140;
 const QString lastSaveDirectorySetting = QStringLiteral("file/lastSaveDirectory");
 const QString editorFontSetting = QStringLiteral("editor/font");
 const QString editorFontSizeSetting = QStringLiteral("editor/fontSize");
+const QString spellCheckSetting = QStringLiteral("editor/spellCheck");
 const QString typewriterSoundsSetting = QStringLiteral("editor/typewriterSounds");
 const QString hideFrontMatterSetting = QStringLiteral("editor/hideFrontMatter");
 
@@ -97,6 +99,7 @@ QString Backend::normalizedLinkUrl(const QString &clipboardText) {
 Backend::Backend(QObject *parent) : QObject(parent) {
     m_hideFrontMatter = QSettings().value(hideFrontMatterSetting, false).toBool();
     m_typewriterSounds = QSettings().value(typewriterSoundsSetting, false).toBool();
+    m_spellCheck = QSettings().value(spellCheckSetting, true).toBool();
     const int savedFontSize = QSettings().value(editorFontSizeSetting, 0).toInt();
     if (savedFontSize >= minimumEditorFontSize && savedFontSize <= maximumEditorFontSize)
         m_editorFontSize = savedFontSize;
@@ -162,7 +165,11 @@ Backend::Backend(QObject *parent) : QObject(parent) {
     });
 }
 
-Backend::~Backend() = default;
+Backend::~Backend() {
+    // The highlighter lives with the editor's document and can outlast us.
+    if (m_highlighter)
+        m_highlighter->setSpellChecker(nullptr);
+}
 
 void Backend::setParentWindow(QWindow *window) {
     m_parentWindow = window;
@@ -215,6 +222,7 @@ void Backend::attachDocument(QObject *textDocument) {
     m_highlighter->setDarkMode(m_darkMode);
     m_highlighter->setColors(m_themeBackground, m_themeForeground, m_themeAccent);
     m_highlighter->setFrontMatterHidden(m_hideFrontMatter);
+    applySpellCheck();
     connect(m_highlighter, &MarkdownHighlighter::frontMatterChanged, this,
             &Backend::hasFrontMatterChanged);
     emit hasFrontMatterChanged();
@@ -405,7 +413,43 @@ void Backend::setCursorPosition(int position) {
 
     const QTextBlock block =
         m_document->findBlock(qBound(0, position, m_document->characterCount() - 1));
-    m_highlighter->setActiveBlock(block.isValid() ? block.blockNumber() : -1);
+    m_highlighter->setActiveBlock(block.isValid() ? block.blockNumber() : -1,
+                                  block.isValid() ? position - block.position() : -1);
+}
+
+QVariantMap Backend::misspellingAt(int position) {
+    if (!m_document || !m_spellChecker || !m_spellCheck)
+        return {};
+
+    // Ask the layout rather than re-deriving the rules: a word is misspelled
+    // here exactly when the highlighter underlined it.
+    const QTextBlock block =
+        m_document->findBlock(qBound(0, position, m_document->characterCount() - 1));
+    if (!block.isValid() || !block.layout())
+        return {};
+    const SpellChecker::Word word =
+        SpellChecker::wordAt(block.text(), position - block.position());
+    if (word.start < 0)
+        return {};
+    for (const QTextLayout::FormatRange &range : block.layout()->formats()) {
+        if (range.start <= word.start && range.start + range.length > word.start
+                && range.format.boolProperty(MarkdownHighlighter::MisspelledProperty)) {
+            const QString text = block.text().mid(word.start, word.length);
+            return {{QStringLiteral("start"), block.position() + word.start},
+                    {QStringLiteral("end"), block.position() + word.start + word.length},
+                    {QStringLiteral("word"), text},
+                    {QStringLiteral("suggestions"), m_spellChecker->suggestions(text)}};
+        }
+    }
+    return {};
+}
+
+void Backend::addToDictionary(const QString &word) {
+    if (!m_spellChecker)
+        return;
+    m_spellChecker->addWord(word);
+    if (m_highlighter)
+        m_highlighter->rehighlight();
 }
 
 void Backend::setSearchHighlight(const QString &query, int currentMatchStart) {
@@ -476,6 +520,30 @@ void Backend::setHideFrontMatter(bool hide) {
     if (m_highlighter)
         m_highlighter->setFrontMatterHidden(hide);
     emit hideFrontMatterChanged();
+}
+
+void Backend::setSpellCheck(bool enabled) {
+    if (m_spellCheck == enabled)
+        return;
+
+    m_spellCheck = enabled;
+    QSettings().setValue(spellCheckSetting, enabled);
+    applySpellCheck();
+    emit spellCheckChanged();
+}
+
+bool Backend::spellCheckAvailable() const {
+    return !SpellChecker::dictionaryPath().isEmpty();
+}
+
+// The dictionary is only loaded the first time spell check is needed.
+void Backend::applySpellCheck() {
+    if (m_spellCheck && !m_spellChecker)
+        m_spellChecker = std::make_unique<SpellChecker>();
+    if (m_highlighter) {
+        m_highlighter->setSpellChecker(m_spellCheck && m_spellChecker->isAvailable()
+                                           ? m_spellChecker.get() : nullptr);
+    }
 }
 
 void Backend::setTypewriterSounds(bool enabled) {
