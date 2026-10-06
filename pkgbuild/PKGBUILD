@@ -1,14 +1,15 @@
 # Maintainer: David Heinemeier Hansson <david@hey.com>
 
-pkgname=omawrite-live
+pkgname=omawrite-plus
 pkgver=0.6.0.r9.g3f07feb
 pkgrel=1
 pkgdesc='Dead-simple Markdown writing app built with Qt Quick, with live preview, spell check, and typewriter sounds'
 arch=('x86_64' 'aarch64')
-url='https://github.com/omacom-io/omawrite'
+url='https://github.com/tkreek/omawrite-plus'
 license=('MIT' 'OFL-1.1')
 provides=('omawrite')
-conflicts=('omawrite')
+conflicts=('omawrite' 'omawrite-live')
+replaces=('omawrite-live')
 install='omawrite.install'
 depends=('hunspell' 'hunspell-en_us' 'qt6-base' 'qt6-declarative' 'qt6-multimedia' 'xdg-desktop-portal')
 makedepends=('gcc' 'make' 'qt6-base' 'qt6-declarative')
