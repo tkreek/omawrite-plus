@@ -140,6 +140,50 @@ private slots:
         QVERIFY(hidden(1, 0));
     }
 
+    void detectsFrontMatter() {
+        QTextDocument document;
+        document.setPlainText(QStringLiteral("---\ntitle: Hi\n---\n# Body"));
+        QCOMPARE(MarkdownHighlighter::frontMatterEnd(&document), 2);
+
+        document.setPlainText(QStringLiteral("---\ntitle: Hi\n# Never closed"));
+        QCOMPARE(MarkdownHighlighter::frontMatterEnd(&document), -1);
+
+        document.setPlainText(QStringLiteral("Intro\n---\ntitle: Hi\n---"));
+        QCOMPARE(MarkdownHighlighter::frontMatterEnd(&document), -1);
+    }
+
+    void foldsHiddenFrontMatterUntilTheCaretEntersIt() {
+        QTextDocument document;
+        document.setPlainText(QStringLiteral("---\ntitle: Hi\ntags: [a]\n---\n# Body"));
+        MarkdownHighlighter highlighter(&document);
+        highlighter.rehighlight();
+        QVERIFY(highlighter.hasFrontMatter());
+
+        const auto visible = [&](int blockNumber) {
+            return document.findBlockByNumber(blockNumber).isVisible();
+        };
+
+        highlighter.setActiveBlock(4);
+        highlighter.setFrontMatterHidden(true);
+        QVERIFY(visible(0));
+        QVERIFY(!visible(1));
+        QVERIFY(!visible(3));
+        QVERIFY(visible(4));
+
+        highlighter.setActiveBlock(0);
+        QVERIFY(visible(1) && visible(3));
+
+        highlighter.setActiveBlock(4);
+        QVERIFY(!visible(2));
+
+        // Breaking the closing fence turns the block back into plain Markdown.
+        QTextCursor cursor(document.findBlockByNumber(3));
+        cursor.insertText(QStringLiteral("x"));
+        highlighter.updateFrontMatter();
+        QVERIFY(!highlighter.hasFrontMatter());
+        QVERIFY(visible(1) && visible(2) && visible(3));
+    }
+
     void loadsCurrentOmarchyTheme() {
         QTemporaryDir homeDirectory;
         QVERIFY(homeDirectory.isValid());

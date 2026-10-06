@@ -37,6 +37,7 @@
 constexpr qreal typoraLineHeightPercent = 140;
 const QString lastSaveDirectorySetting = QStringLiteral("file/lastSaveDirectory");
 const QString editorFontSetting = QStringLiteral("editor/font");
+const QString hideFrontMatterSetting = QStringLiteral("editor/hideFrontMatter");
 
 // Noto ships a separate family per script, which buries every other font in
 // the picker. Offer only the core Latin families; the rest still serve as
@@ -92,6 +93,7 @@ QString Backend::normalizedLinkUrl(const QString &clipboardText) {
 }
 
 Backend::Backend(QObject *parent) : QObject(parent) {
+    m_hideFrontMatter = QSettings().value(hideFrontMatterSetting, false).toBool();
     const QString savedFont = QSettings().value(editorFontSetting).toString();
     m_editorFont = !savedFont.isEmpty() && QFontDatabase::hasFamily(savedFont)
         ? savedFont
@@ -206,6 +208,10 @@ void Backend::attachDocument(QObject *textDocument) {
     m_highlighter = new MarkdownHighlighter(m_document);
     m_highlighter->setDarkMode(m_darkMode);
     m_highlighter->setColors(m_themeBackground, m_themeForeground, m_themeAccent);
+    m_highlighter->setFrontMatterHidden(m_hideFrontMatter);
+    connect(m_highlighter, &MarkdownHighlighter::frontMatterChanged, this,
+            &Backend::hasFrontMatterChanged);
+    emit hasFrontMatterChanged();
 
     connect(m_document, &QTextDocument::contentsChange, this,
             [this](int position, int, int charsAdded) {
@@ -439,6 +445,21 @@ void Backend::setEditorFont(const QString &family) {
     m_editorFont = family;
     QSettings().setValue(editorFontSetting, family);
     emit editorFontChanged();
+}
+
+void Backend::setHideFrontMatter(bool hide) {
+    if (m_hideFrontMatter == hide)
+        return;
+
+    m_hideFrontMatter = hide;
+    QSettings().setValue(hideFrontMatterSetting, hide);
+    if (m_highlighter)
+        m_highlighter->setFrontMatterHidden(hide);
+    emit hideFrontMatterChanged();
+}
+
+bool Backend::hasFrontMatter() const {
+    return m_highlighter && m_highlighter->hasFrontMatter();
 }
 
 QStringList Backend::availableFonts() const {

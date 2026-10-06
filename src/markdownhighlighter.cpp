@@ -13,6 +13,12 @@ namespace {
 // Heading sizes relative to body text, from # to ######.
 constexpr qreal headingScales[6] = {1.6, 1.35, 1.15, 1.0, 1.0, 1.0};
 
+constexpr qreal frontMatterScale = 0.85;
+
+// Front matter has to close near the top; a stray --- further down the
+// document is a horizontal rule, not the end of a metadata block.
+constexpr int frontMatterMaxBlocks = 200;
+
 bool overlaps(const MarkdownHighlighter::Span &a, const MarkdownHighlighter::Span &b) {
     return a.start < b.start + b.length && b.start < a.start + a.length;
 }
@@ -22,6 +28,17 @@ bool overlaps(const MarkdownHighlighter::Span &a, const MarkdownHighlighter::Spa
 MarkdownHighlighter::MarkdownHighlighter(QTextDocument *document)
     : QSyntaxHighlighter(document) {
     rebuildFormats();
+
+    // Whether the top of the document is front matter can change with an edit
+    // anywhere inside it, so rescan once the edit (and its rehighlight) settles.
+    m_frontMatterTimer.setSingleShot(true);
+    m_frontMatterTimer.setInterval(0);
+    connect(&m_frontMatterTimer, &QTimer::timeout, this, &MarkdownHighlighter::updateFrontMatter);
+    if (document) {
+        connect(document, &QTextDocument::contentsChange, &m_frontMatterTimer,
+                qOverload<>(&QTimer::start));
+    }
+    updateFrontMatter();
 }
 
 void MarkdownHighlighter::setDarkMode(bool darkMode) {
@@ -69,14 +86,91 @@ void MarkdownHighlighter::setActiveBlock(int blockNumber) {
         return;
 
     const int previous = m_activeBlock;
+    const bool wasInFrontMatter = caretInFrontMatter();
     m_activeBlock = blockNumber;
     if (!document())
         return;
+    if (wasInFrontMatter != caretInFrontMatter())
+        applyFrontMatterVisibility();
     for (const int number : {previous, blockNumber}) {
         const QTextBlock block = document()->findBlockByNumber(number);
         if (block.isValid())
             rehighlightBlock(block);
     }
+}
+
+void MarkdownHighlighter::setFrontMatterHidden(bool hidden) {
+    if (m_frontMatterHidden == hidden)
+        return;
+
+    m_frontMatterHidden = hidden;
+    applyFrontMatterVisibility();
+    const QTextBlock first = document() ? document()->firstBlock() : QTextBlock();
+    if (first.isValid())
+        rehighlightBlock(first);
+}
+
+int MarkdownHighlighter::frontMatterEnd(const QTextDocument *document) {
+    if (!document)
+        return -1;
+
+    QTextBlock block = document->firstBlock();
+    if (!block.isValid() || block.text().trimmed() != QStringLiteral("---"))
+        return -1;
+
+    for (block = block.next(); block.isValid() && block.blockNumber() < frontMatterMaxBlocks;
+         block = block.next()) {
+        const QString text = block.text().trimmed();
+        if (text == QStringLiteral("---") || text == QStringLiteral("..."))
+            return block.blockNumber();
+    }
+    return -1;
+}
+
+void MarkdownHighlighter::updateFrontMatter() {
+    const int end = frontMatterEnd(document());
+    if (end == m_frontMatterEnd)
+        return;
+
+    const int previous = m_frontMatterEnd;
+    m_frontMatterEnd = end;
+    for (QTextBlock block = document()->firstBlock();
+         block.isValid() && block.blockNumber() <= qMax(previous, end); block = block.next()) {
+        rehighlightBlock(block);
+    }
+    applyFrontMatterVisibility();
+    emit frontMatterChanged();
+}
+
+bool MarkdownHighlighter::caretInFrontMatter() const {
+    return m_activeBlock >= 0 && m_activeBlock <= m_frontMatterEnd;
+}
+
+// Hidden front matter collapses to its opening fence. Moving the caret into
+// that line, or into the block from the keyboard, opens it up again.
+void MarkdownHighlighter::applyFrontMatterVisibility() {
+    QTextDocument *document = this->document();
+    if (!document)
+        return;
+
+    const bool collapse = m_frontMatterHidden && hasFrontMatter() && !caretInFrontMatter();
+    const int last = qMax(m_collapsedThrough, m_frontMatterEnd);
+    int dirtyStart = -1;
+    int dirtyEnd = -1;
+    for (QTextBlock block = document->findBlockByNumber(1);
+         block.isValid() && block.blockNumber() <= last; block = block.next()) {
+        const bool visible = !collapse || block.blockNumber() > m_frontMatterEnd;
+        if (block.isVisible() == visible)
+            continue;
+        block.setVisible(visible);
+        if (dirtyStart < 0)
+            dirtyStart = block.position();
+        dirtyEnd = block.position() + block.length();
+    }
+    m_collapsedThrough = collapse ? m_frontMatterEnd : 0;
+
+    if (dirtyStart >= 0)
+        document->markContentsDirty(dirtyStart, dirtyEnd - dirtyStart);
 }
 
 void MarkdownHighlighter::rebuildFormats() {
@@ -159,6 +253,28 @@ void MarkdownHighlighter::rebuildFormats() {
     m_codeMarkerFormat = m_codeFormat;
     m_codeMarkerFormat.setForeground(marker);
 
+    // Front matter is metadata, so it sits back from the prose: smaller, in
+    // the code face, with keys picked out in the accent colour.
+    m_frontMatterFormat = QTextCharFormat();
+    m_frontMatterFormat.setForeground(QColor::fromRgbF(
+        text.redF() * 0.6 + background.redF() * 0.4,
+        text.greenF() * 0.6 + background.greenF() * 0.4,
+        text.blueF() * 0.6 + background.blueF() * 0.4));
+    if (m_codeFormat.hasProperty(QTextFormat::FontFamilies))
+        m_frontMatterFormat.setFontFamilies(m_codeFormat.fontFamilies().toStringList());
+    if (baseFont.pixelSize() > 0) {
+        m_frontMatterFormat.setProperty(QTextFormat::FontPixelSize,
+                                        qRound(baseFont.pixelSize() * frontMatterScale));
+    } else if (baseFont.pointSizeF() > 0) {
+        m_frontMatterFormat.setFontPointSize(baseFont.pointSizeF() * frontMatterScale);
+    }
+
+    m_frontMatterKeyFormat = m_frontMatterFormat;
+    m_frontMatterKeyFormat.setForeground(link);
+
+    m_frontMatterFenceFormat = m_frontMatterFormat;
+    m_frontMatterFenceFormat.setForeground(marker);
+
     m_quoteFormat = QTextCharFormat();
     m_quoteFormat.setForeground(quote);
     m_quoteFormat.setFontItalic(true);
@@ -176,7 +292,15 @@ void MarkdownHighlighter::rebuildFormats() {
 }
 
 void MarkdownHighlighter::highlightBlock(const QString &text) {
-    const bool active = currentBlock().blockNumber() == m_activeBlock;
+    const int number = currentBlock().blockNumber();
+    if (number <= m_frontMatterEnd) {
+        setCurrentBlockState(Normal);
+        highlightFrontMatter(text, number == 0 || number == m_frontMatterEnd);
+        highlightSearch(text);
+        return;
+    }
+
+    const bool active = number == m_activeBlock;
     if (!highlightCodeBlock(text, active) && !text.isEmpty()) {
         highlightMarkers(text, active);
         if (text.contains(QLatin1Char('`')) || text.contains(QLatin1Char('*'))
@@ -203,6 +327,26 @@ bool MarkdownHighlighter::highlightCodeBlock(const QString &text, bool active) {
     if (insideCode)
         setFormat(0, text.length(), m_codeFormat);
     return insideCode;
+}
+
+void MarkdownHighlighter::highlightFrontMatter(const QString &text, bool fence) {
+    if (fence) {
+        setFormat(0, text.length(), m_frontMatterFenceFormat);
+        return;
+    }
+
+    setFormat(0, text.length(), m_frontMatterFormat);
+    static const QRegularExpression commentRe(QStringLiteral("^\\s*#"));
+    if (commentRe.match(text).hasMatch()) {
+        setFormat(0, text.length(), m_frontMatterFenceFormat);
+        return;
+    }
+
+    static const QRegularExpression keyRe(QStringLiteral("^(\\s*(?:-\\s+)?)([^\\s:#][^:]*):(?=\\s|$)"));
+    const QRegularExpressionMatch key = keyRe.match(text);
+    if (key.hasMatch()) {
+        setFormat(key.capturedStart(2), key.capturedLength(2) + 1, m_frontMatterKeyFormat);
+    }
 }
 
 void MarkdownHighlighter::highlightSearch(const QString &text) {

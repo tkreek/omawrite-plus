@@ -22,10 +22,16 @@ Install via the Omarchy Package Repository via the `omawrite` package. It's inst
 - `Ctrl+F` searches the document. Use `Enter` or `Ctrl+G` for the next match and `Shift+Enter` for the previous match.
 - `Ctrl+H` opens find and replace.
 - `Ctrl+B`, `Ctrl+I`, and `Ctrl+K` insert bold, italic, and link Markdown.
+- `Ctrl+Shift+M` shows or hides the document's front matter.
 - `Ctrl+?` shows the keyboard shortcut reference.
 
 Unsaved drafts are recovered after an abnormal exit. Omawrite also watches open files
 and warns before an external change can replace local work.
+
+YAML front matter at the top of a document (between `---` fences) is set apart in
+a smaller face with its keys highlighted. The eye button in the footer, or
+`Ctrl+Shift+M`, folds it down to its opening fence; moving the caret onto that
+line unfolds it while you edit. Omawrite remembers the choice.
 
 The font button in the footer picks the writing font from any installed text font,
 and Omawrite remembers the choice. IBM Plex Mono is the default.

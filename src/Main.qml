@@ -180,6 +180,12 @@ ApplicationWindow {
     }
 
     Shortcut {
+        sequence: "Ctrl+Shift+M"
+        context: Qt.ApplicationShortcut
+        onActivated: backend.hideFrontMatter = !backend.hideFrontMatter
+    }
+
+    Shortcut {
         sequence: "Ctrl+O"
         context: Qt.ApplicationShortcut
         onActivated: backend.openDialog()
@@ -332,7 +338,7 @@ ApplicationWindow {
         standardButtons: Dialog.Close
         anchors.centerIn: parent
         contentItem: Label {
-            text: "Ctrl+S  Save\nCtrl+Shift+S  Save As\nCtrl+O  Open\nCtrl+N  New Window\nCtrl+F  Find\nCtrl+H  Find and Replace\nCtrl+B  Bold\nCtrl+I  Italic\nCtrl+K  Link\nCtrl+P  Print\nF11 / Super+F  Fullscreen\nCtrl+?  Shortcuts"
+            text: "Ctrl+S  Save\nCtrl+Shift+S  Save As\nCtrl+O  Open\nCtrl+N  New Window\nCtrl+F  Find\nCtrl+H  Find and Replace\nCtrl+B  Bold\nCtrl+I  Italic\nCtrl+K  Link\nCtrl+Shift+M  Show/Hide Front Matter\nCtrl+P  Print\nF11 / Super+F  Fullscreen\nCtrl+?  Shortcuts"
             lineHeight: 1.5
         }
     }
@@ -787,6 +793,15 @@ ApplicationWindow {
                 iconColor: win.mutedColor
                 tooltip: "Font"
                 onClicked: fontPicker.opened ? fontPicker.close() : fontPicker.open()
+            }
+
+            FooterIconButton {
+                objectName: "frontMatterButton"
+                visible: backend.hasFrontMatter
+                iconName: backend.hideFrontMatter ? "hidden" : "visible"
+                iconColor: win.mutedColor
+                tooltip: backend.hideFrontMatter ? "Show Front Matter" : "Hide Front Matter"
+                onClicked: backend.hideFrontMatter = !backend.hideFrontMatter
             }
 
             Label {

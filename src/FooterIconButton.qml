@@ -60,6 +60,16 @@ Item {
                 context.lineTo(13, 13.5);
                 context.moveTo(5, 9.5);
                 context.lineTo(11, 9.5);
+            } else if (control.iconName === "visible" || control.iconName === "hidden") {
+                context.moveTo(1.5, 8);
+                context.quadraticCurveTo(8, 1, 14.5, 8);
+                context.quadraticCurveTo(8, 15, 1.5, 8);
+                context.moveTo(10, 8);
+                context.arc(8, 8, 2, 0, Math.PI * 2);
+                if (control.iconName === "hidden") {
+                    context.moveTo(2.5, 13.5);
+                    context.lineTo(13.5, 2.5);
+                }
             } else {
                 context.moveTo(2.5, 13);
                 context.lineTo(2.5, 3.5);

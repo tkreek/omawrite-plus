@@ -31,6 +31,8 @@ class Backend : public QObject {
     Q_PROPERTY(QString themeSelection READ themeSelection NOTIFY themeColorsChanged)
     Q_PROPERTY(QString editorFont READ editorFont WRITE setEditorFont NOTIFY editorFontChanged)
     Q_PROPERTY(QStringList availableFonts READ availableFonts CONSTANT)
+    Q_PROPERTY(bool hideFrontMatter READ hideFrontMatter WRITE setHideFrontMatter NOTIFY hideFrontMatterChanged)
+    Q_PROPERTY(bool hasFrontMatter READ hasFrontMatter NOTIFY hasFrontMatterChanged)
 
 public:
     explicit Backend(QObject *parent = nullptr);
@@ -55,6 +57,9 @@ public:
     QString editorFont() const { return m_editorFont; }
     void setEditorFont(const QString &family);
     QStringList availableFonts() const;
+    bool hideFrontMatter() const { return m_hideFrontMatter; }
+    void setHideFrontMatter(bool hide);
+    bool hasFrontMatter() const;
     static QString defaultEditorFont();
     static QStringList selectableFontFamilies(const QStringList &families);
     static int countWords(const QString &text);
@@ -93,6 +98,8 @@ signals:
     void textScaleChanged();
     void themeColorsChanged();
     void editorFontChanged();
+    void hideFrontMatterChanged();
+    void hasFrontMatterChanged();
     void closeAfterSave();
     void openDialogRequested();
     void saveDialogRequested(const QUrl &suggestedUrl);
@@ -150,5 +157,6 @@ private:
     QString m_themeAccent;
     QString m_themeSelection;
     QString m_editorFont;
+    bool m_hideFrontMatter = false;
     QFileSystemWatcher m_themeWatcher;
 };
