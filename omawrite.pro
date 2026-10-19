@@ -1,4 +1,4 @@
-QT += core gui widgets printsupport qml quick quickcontrols2 quickdialogs2 dbus
+QT += core gui concurrent widgets printsupport qml quick quickcontrols2 quickdialogs2 dbus
 
 CONFIG += c++17 release
 TARGET = omawrite
@@ -6,6 +6,7 @@ TEMPLATE = app
 
 HEADERS += \
     src/backend.h \
+    src/cli.h \
     src/markdownhighlighter.h \
     src/spellchecker.h \
     src/systemtheme.h
@@ -13,6 +14,7 @@ HEADERS += \
 SOURCES += \
     src/main.cpp \
     src/backend.cpp \
+    src/cli.cpp \
     src/markdownhighlighter.cpp \
     src/spellchecker.cpp \
     src/systemtheme.cpp

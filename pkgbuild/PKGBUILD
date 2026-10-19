@@ -1,7 +1,7 @@
 # Maintainer: David Heinemeier Hansson <david@hey.com>
 
 pkgname=omawrite-plus
-pkgver=0.6.0.r9.g3f07feb
+pkgver=0.7.2
 pkgrel=1
 pkgdesc='Dead-simple Markdown writing app built with Qt Quick, with live preview, spell check, and typewriter sounds'
 arch=('x86_64' 'aarch64')

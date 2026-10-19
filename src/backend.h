@@ -4,6 +4,7 @@
 #include <QPointer>
 #include <QByteArray>
 #include <QFileSystemWatcher>
+#include <QFutureWatcher>
 #include <QString>
 #include <QStringList>
 #include <QTimer>
@@ -12,6 +13,7 @@
 #include <memory>
 
 class MarkdownHighlighter;
+class QFont;
 class SpellChecker;
 class QTextDocument;
 class QWindow;
@@ -25,14 +27,15 @@ class Backend : public QObject {
     Q_PROPERTY(QString status READ status NOTIFY statusChanged)
     Q_PROPERTY(int wordCount READ wordCount NOTIFY wordCountChanged)
     Q_PROPERTY(bool darkMode READ darkMode WRITE setDarkMode NOTIFY darkModeChanged)
-    Q_PROPERTY(qreal textScale READ textScale WRITE setTextScale NOTIFY textScaleChanged)
+    Q_PROPERTY(qreal textScale READ textScale NOTIFY textScaleChanged)
+    Q_PROPERTY(int textZoomPercent READ textZoomPercent NOTIFY textScaleChanged)
     Q_PROPERTY(QString themeBackground READ themeBackground NOTIFY themeColorsChanged)
     Q_PROPERTY(QString themeForeground READ themeForeground NOTIFY themeColorsChanged)
     Q_PROPERTY(QString themeAccent READ themeAccent NOTIFY themeColorsChanged)
     Q_PROPERTY(QString themeSelection READ themeSelection NOTIFY themeColorsChanged)
+    Q_PROPERTY(QString themeSelectionForeground READ themeSelectionForeground NOTIFY themeColorsChanged)
     Q_PROPERTY(QString editorFont READ editorFont WRITE setEditorFont NOTIFY editorFontChanged)
     Q_PROPERTY(QStringList availableFonts READ availableFonts CONSTANT)
-    Q_PROPERTY(int editorFontSize READ editorFontSize WRITE setEditorFontSize NOTIFY editorFontSizeChanged)
     Q_PROPERTY(bool hideFrontMatter READ hideFrontMatter WRITE setHideFrontMatter NOTIFY hideFrontMatterChanged)
     Q_PROPERTY(bool typewriterSounds READ typewriterSounds WRITE setTypewriterSounds NOTIFY typewriterSoundsChanged)
     Q_PROPERTY(bool spellCheck READ spellCheck WRITE setSpellCheck NOTIFY spellCheckChanged)
@@ -53,20 +56,21 @@ public:
     int wordCount() const { return m_wordCount; }
     bool darkMode() const { return m_darkMode; }
     void setDarkMode(bool darkMode);
-    qreal textScale() const { return m_textScale; }
-    void setTextScale(qreal textScale);
+    // What the desktop asks for, times what the user asked for on top of it.
+    qreal textScale() const { return m_desktopTextScale * m_textZoom; }
+    void setDesktopTextScale(qreal textScale);
+    // The user's own size on top of the desktop's, as Ctrl+= and Ctrl+- set it.
+    int textZoomPercent() const { return qRound(m_textZoom * 100); }
     QString themeBackground() const { return m_themeBackground; }
     QString themeForeground() const { return m_themeForeground; }
     QString themeAccent() const { return m_themeAccent; }
     QString themeSelection() const { return m_themeSelection; }
+    QString themeCodeBackground() const { return m_themeCodeBackground; }
+    QString themeSelectionForeground() const { return m_themeSelectionForeground; }
     QString editorFont() const { return m_editorFont; }
     void setEditorFont(const QString &family);
     QStringList availableFonts() const;
     // The writing text size in pixels, or 0 to follow the desktop text size.
-    int editorFontSize() const { return m_editorFontSize; }
-    void setEditorFontSize(int pixels);
-    static constexpr int minimumEditorFontSize = 10;
-    static constexpr int maximumEditorFontSize = 48;
     bool hideFrontMatter() const { return m_hideFrontMatter; }
     void setHideFrontMatter(bool hide);
     bool hasFrontMatter() const;
@@ -80,30 +84,41 @@ public:
     static int countWords(const QString &text);
     static QString normalizedLinkUrl(const QString &clipboardText);
     static QString suggestedFileName(const QString &text);
+    static QString tomlValue(const QString &text);
+    static QFont printFont(const QFont &editorFont, qreal screenDpi);
 
     Q_INVOKABLE void attachDocument(QObject *textDocument);
     Q_INVOKABLE void openDialog();
     Q_INVOKABLE void open(const QUrl &url);
+    void openOrStartFile(const QUrl &url);
     Q_INVOKABLE void save();
-    Q_INVOKABLE void saveForClose();
     Q_INVOKABLE void saveAsDialog();
     Q_INVOKABLE void saveAs(const QUrl &url);
-    Q_INVOKABLE void fileDialogCanceled();
     Q_INVOKABLE void discardRecovery();
     Q_INVOKABLE void reloadFromDisk();
     Q_INVOKABLE void keepExternalVersion();
+    Q_INVOKABLE void increaseTextSize();
+    Q_INVOKABLE void decreaseTextSize();
+    Q_INVOKABLE void resetTextSize();
+    Q_INVOKABLE void holdAutoSave(bool held);
     Q_INVOKABLE void printDocument();
+    Q_INVOKABLE void copyAsHtml();
     Q_INVOKABLE void newWindow();
     Q_INVOKABLE QString clipboardUrl() const;
     Q_INVOKABLE QString clipboardText() const;
     Q_INVOKABLE bool editorTextChanged();
-    Q_INVOKABLE void setCursorPosition(int position);
+    Q_INVOKABLE void setCaretPosition(int position);
+    Q_INVOKABLE QString linkUrlAt(int position) const;
+    Q_INVOKABLE QVariantMap emphasisSpanAt(int position, const QString &marker) const;
+    Q_INVOKABLE int cursorPositionStep(int position, int direction) const;
     // The underlined word at a document position, as {start, end, word,
     // suggestions}, or an empty map when the word there is spelled right.
     Q_INVOKABLE QVariantMap misspellingAt(int position);
     Q_INVOKABLE void addToDictionary(const QString &word);
     Q_INVOKABLE void setSearchHighlight(const QString &query, int currentMatchStart);
-    Q_INVOKABLE void openExternalUrl(const QUrl &url);
+    Q_INVOKABLE QVariantList searchMatches(const QString &query) const;
+    Q_INVOKABLE void replaceRange(int start, int end, const QString &text);
+    Q_INVOKABLE bool insideFence(int position) const;
     Q_INVOKABLE QVariantMap windowGeometry() const;
     Q_INVOKABLE void saveWindowGeometry(int x, int y, int width, int height, bool maximized);
     Q_INVOKABLE void documentFontChanged();
@@ -117,19 +132,22 @@ signals:
     void textScaleChanged();
     void themeColorsChanged();
     void editorFontChanged();
-    void editorFontSizeChanged();
     void hideFrontMatterChanged();
     void hasFrontMatterChanged();
     void typewriterSoundsChanged();
     void spellCheckChanged();
-    void closeAfterSave();
+    void saveFailed();
     void openDialogRequested();
     void saveDialogRequested(const QUrl &suggestedUrl);
     void saveSucceeded();
     void externalChangeDetected(bool deleted, bool locallyModified);
 
 private:
+    friend class OmawriteTest;
+
     void loadDocumentText(const QString &text);
+    qreal steppedTextZoom(int direction) const;
+    void setTextZoom(qreal zoom);
     void setFileUrl(const QUrl &url);
     void setModified(bool modified);
     void setStatus(const QString &status);
@@ -143,10 +161,18 @@ private:
     void reapplyTypographyToChange();
     void scheduleRecovery();
     void writeRecovery();
+    void scheduleAutoSave();
+    void autoSave();
+    void suspendAutoSave();
     void restoreRecovery();
     void clearRecovery();
-    QString recoveryPath() const;
+    bool diskMatchesKnownContents() const;
+    void reportExternalChange(bool deleted);
+    static bool savesUnchanged(const QByteArray &raw);
+    void setKnownFileContents(const QByteArray &contents, bool known);
+    void unwatchFiles();
     void watchCurrentFile();
+    void checkWatchedFile();
     void loadOmarchyTheme();
     void applySpellCheck();
     void watchOmarchyTheme();
@@ -156,22 +182,35 @@ private:
     QString m_status;
     int m_wordCount = 0;
     bool m_darkMode = true;
-    qreal m_textScale = 1.0;
+    // The desktop's light/dark setting, used when the Omarchy theme names none.
+    bool m_systemDarkMode = true;
+    qreal m_desktopTextScale = 1.0;
+    qreal m_textZoom = 1.0;
     bool m_loading = false;
-    bool m_closeAfterSave = false;
     bool m_formattingTypography = false;
-    int m_formattedBlockCount = 0;
     int m_lastChangePos = 0;
     int m_lastChangeAdded = 0;
     QTimer m_wordCountTimer;
+    // Counting a large document stalls typing, so counts run on a worker
+    // thread. A load outdates the count in flight, and its result is dropped.
+    QFutureWatcher<int> m_wordCountWatcher;
+    bool m_wordCountStale = false;
+    bool m_wordCountAgain = false;
     QTimer m_recoveryTimer;
+    QTimer m_autoSaveTimer;
     QFileSystemWatcher m_fileWatcher;
+    QTimer m_fileCheckTimer;
+    bool m_fileMissing = false;
     QPointer<QTextDocument> m_document;
     QPointer<QWindow> m_parentWindow;
     QPointer<MarkdownHighlighter> m_highlighter;
+    int m_caretPosition = 0;
     QString m_lastDocumentText;
     QByteArray m_lastKnownFileContents;
+    QString m_lastKnownFileText;
     bool m_hasKnownFileContents = false;
+    bool m_autoSaveSuspended = false;
+    bool m_autoSaveHeld = false;
     QString m_recoveryPath;
     std::unique_ptr<QLockFile> m_recoveryLock;
 
@@ -179,11 +218,13 @@ private:
     QString m_themeForeground;
     QString m_themeAccent;
     QString m_themeSelection;
+    QString m_themeCodeBackground;
+    QString m_themeSelectionForeground;
     QString m_editorFont;
-    int m_editorFontSize = 0;
     bool m_hideFrontMatter = false;
     bool m_typewriterSounds = false;
     bool m_spellCheck = true;
     std::unique_ptr<SpellChecker> m_spellChecker;
     QFileSystemWatcher m_themeWatcher;
+    QTimer m_themeReloadTimer;
 };

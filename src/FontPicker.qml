@@ -14,8 +14,11 @@ Popup {
     property color mutedColor: "#909191"
     property color highlightColor: "#428bca"
     property real maximumHeight: 440
-    property int fontSize: 20
-    property bool followsSystemSize: true
+    // The text size on top of the desktop's, as Ctrl+= and Ctrl+- set it.
+    property int zoomPercent: 100
+    property int minimumZoomPercent: 50
+    property int maximumZoomPercent: 300
+    readonly property bool followsSystemSize: zoomPercent === 100
 
     signal fontChosen(string family)
     signal fontSizeStepped(int direction)
@@ -48,7 +51,7 @@ Popup {
     modal: false
     focus: true
     padding: 8
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
     Material.elevation: 8
 
     onAboutToShow: {
@@ -119,7 +122,7 @@ Popup {
                 SizeButton {
                     objectName: "smallerButton"
                     text: "\u2212"
-                    enabledState: picker.fontSize > 10
+                    enabledState: picker.zoomPercent > picker.minimumZoomPercent
                     onActivated: picker.fontSizeStepped(-1)
                 }
 
@@ -128,7 +131,7 @@ Popup {
                     height: picker.scaledSize(28)
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
-                    text: picker.fontSize + "px"
+                    text: picker.zoomPercent + "%"
                     color: picker.textColor
                     font.family: picker.defaultFont
                     font.pixelSize: picker.scaledSize(14)
@@ -137,7 +140,7 @@ Popup {
                 SizeButton {
                     objectName: "largerButton"
                     text: "+"
-                    enabledState: picker.fontSize < 48
+                    enabledState: picker.zoomPercent < picker.maximumZoomPercent
                     onActivated: picker.fontSizeStepped(1)
                 }
             }
